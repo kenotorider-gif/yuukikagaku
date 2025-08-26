@@ -1,0 +1,3193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>東方有機譚 - 有機化学シューティング 改訂版</title>
+    <style>
+        html,body{height:100%;}
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            padding-right: 360px; /* 解説パネル分のスペース確保 */
+        }
+        body.inverted {
+            background: #fff;
+            color: #000;
+        }
+        #gameContainer {
+            position: relative;
+            background: #000;
+            width: 600px;
+            height: 800px;
+        }
+        
+        /* 解答解説パネル */
+        #explanationPanel {
+            position: absolute;
+            right: -350px;
+            top: 0;
+            width: 340px;
+            height: 800px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #fff;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 15px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            z-index: 200;
+            display: none;
+        }
+        
+        #explanationPanel.inverted {
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid #000;
+            color: #000;
+        }
+        
+        #explanationPanel h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            border-bottom: 1px solid #fff;
+            padding-bottom: 5px;
+        }
+        
+        #explanationPanel.inverted h3 {
+            border-bottom: 1px solid #000;
+        }
+        
+        #explanationPanel .question-text {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        #explanationPanel .answer-text {
+            margin-bottom: 8px;
+            color: #0f0;
+        }
+        
+        #explanationPanel.inverted .answer-text {
+            color: #080;
+        }
+        
+        #explanationPanel .explanation-text {
+            line-height: 1.4;
+            margin-bottom: 10px;
+        }
+        #gameContainer.inverted {
+            background: #fff;
+        }
+        #gameCanvas {
+            border: 2px solid #fff;
+            background: #000;
+            display:block;
+        }
+        #gameCanvas.inverted {
+            border: 2px solid #000;
+            background: #fff;
+        }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+            font-size: 14px;
+        }
+        .controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 12px;
+            z-index: 100;
+        }
+        /* タイトル（全画面） */
+        #startScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.98);
+            z-index: 1000;
+            flex-direction: column;
+            transition: opacity 0.2s linear;
+        }
+        #startScreen.inverted {
+            background: rgba(255,255,255,0.98);
+        }
+        #startInner{
+            width: 640px;
+            max-width: 92vw;
+            text-align: center;
+            color: #fff;
+        }
+        .inverted #startInner {
+            color: #000;
+        }
+        #startScreen button, #gameOver button {
+            background: #000;
+            color: #fff;
+            border: 2px solid #fff;
+            padding: 12px 24px;
+            margin: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+        }
+        .inverted #startScreen button, .inverted #gameOver button {
+            background: #fff;
+            color: #000;
+            border: 2px solid #000;
+        }
+        #startScreen button:hover, #gameOver button:hover {
+            background: #fff;
+            color: #000;
+        }
+        .inverted #startScreen button:hover, .inverted #gameOver button:hover {
+            background: #000;
+            color: #fff;
+        }
+        .easy { background: #040 !important; border-color: #0f0 !important; color: #0f0 !important; }
+        .easy:hover { background: #0f0 !important; color: #000 !important; }
+        .hard { background: #400 !important; border-color: #f00 !important; color: #f00 !important; }
+        .hard:hover { background: #f00 !important; color: #000 !important; }
+        .debug { background: #300 !important; border-color: #f80 !important; color: #f80 !important; }
+        .debug:hover { background: #f80 !important; color: #000 !important; }
+        .debug.active { background: #f80 !important; color: #000 !important; }
+        .academic { background: #800080 !important; border-color: #ff00ff !important; color: #fff !important; }
+        .academic:hover { background: #ff00ff !important; color: #000 !important; }
+        .inverted .academic { background: #800080 !important; border-color: #800080 !important; color: #fff !important; }
+        .inverted .academic:hover { background: #800080 !important; color: #000 !important; }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            border: 3px solid #fff;
+            padding: 30px;
+            text-align: center;
+            z-index: 300;
+            display: none;
+        }
+        .inverted #gameOver {
+            background: rgba(255,255,255,0.9);
+            border: 3px solid #000;
+        }
+        .title {
+            font-size: 56px;
+            margin-bottom: 12px;
+            letter-spacing: 6px;
+            font-weight: bold;
+        }
+        /* 全画面フェードオーバーレイ（fixed） */
+        #fadeOverlay{
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 950;
+            background: transparent;
+        }
+        /* ボム効果用オーバーレイ */
+        #bombFlash {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 900;
+            background: transparent;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <audio id="bgmStage" src="道中曲.mp3" loop preload="auto"></audio>
+    <audio id="bgmBoss" src="ボス戦曲.mp3" loop preload="auto"></audio>
+    <audio id="bgmAcademicBoss" src="AcademicBoss.mp3" loop preload="auto"></audio>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="600" height="800"></canvas>
+        <div id="ui">
+            <div>残機: <span id="playerLives">3</span></div>
+            <div>ボム: <span id="bombCount">6</span> <span id="bombCooldown"></span></div>
+            <div>Score: <span id="score">0</span></div>
+            <div>Boss HP: <span id="bossHp">0</span></div>
+            <div>Stage: 有機化学研究所 <span id="difficultyDisplay"></span></div>
+        </div>
+        <div class="controls">
+            矢印キー: 移動 | Z: 射撃 | X: ボム | Shift: 低速移動
+        </div>
+        <div id="fadeOverlay"></div>
+        <div id="bombFlash"></div>
+        
+        <!-- 解答解説パネル -->
+        <div id="explanationPanel">
+            <h3>解答・解説</h3>
+            <div id="explanationContent">
+                問題に回答すると、ここに解答と詳しい解説が表示されます。
+            </div>
+        </div>
+
+        <div id="startScreen">
+            <div id="startInner">
+                <div class="title" id="titleText">東方有機譚</div>
+                <canvas id="startAnim" width="560" height="120" style="display:block;margin:0 auto 12px auto;background:transparent"></canvas>
+                <div id="normalDiffButtons">
+                    <button id="easyBtn" class="easy">イージーモード</button>
+                    <button id="normalBtn">ノーマルモード</button>
+                    <button id="hardBtn" class="hard">ハードモード</button>
+                </div>
+                <div id="academicDiffButtons" style="display: none;">
+                    <button id="academicBtn" class="academic">ACADEMIC MODE</button>
+                </div>
+                <div>
+                    <button id="debugBtn" class="debug">管理者モード: OFF</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="gameOver">
+            <h2 id="gameOverText"></h2>
+            <button onclick="showStartScreen()">タイトルに戻る</button>
+        </div>
+    </div>
+
+    <script>
+        const bgmStage = document.getElementById('bgmStage');
+        const bgmBoss = document.getElementById('bgmBoss');
+        const bgmAcademicBoss = document.getElementById('bgmAcademicBoss');
+
+        function fadeOutAudio(audio, duration = 2000, callback = null) {
+            const step = 50;
+            const volumeStep = audio.volume / (duration / step);
+            const fadeInterval = setInterval(() => {
+                audio.volume = Math.max(0, audio.volume - volumeStep);
+                if (audio.volume <= 0.01) {
+                    clearInterval(fadeInterval);
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audio.volume = 1.0;
+                    if (callback) callback();
+                }
+
+            // パーティクル描画
+            drawParticles();
+            }, step);
+        }
+
+        // --- DOM & Canvas ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startAnimCanvas = document.getElementById('startAnim');
+        const startAnimCtx = startAnimCanvas.getContext('2d');
+        const fadeOverlay = document.getElementById('fadeOverlay');
+        const bombFlash = document.getElementById('bombFlash');
+        const startScreen = document.getElementById('startScreen');
+
+        // --- utilities ---
+        function shuffleArray(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]] = [arr[j],arr[i]]; } return arr; }
+
+        // --- simple formula parser for approximate molar mass ---
+        const atomicMass = {C:12.01, H:1.008, O:16.00, N:14.01, S:32.06};
+        function parseFormula(formula){
+            let i=0;
+            function parseSeg(){
+                let mass=0;
+                while(i<formula.length){
+                    const ch = formula[i];
+                    if(ch === '('){ i++; const seg = parseSeg(); let num=''; while(i<formula.length && /[0-9]/.test(formula[i])) num+=formula[i++]; const mul = num?parseInt(num):1; mass += seg * mul; }
+                    else if(ch === ')'){ i++; break; }
+                    else {
+                        let sym = formula[i++]; if(i<formula.length && /[a-z]/.test(formula[i])) sym += formula[i++];
+                        let num=''; while(i<formula.length && /[0-9]/.test(formula[i])) num+=formula[i++]; const mul = num?parseInt(num):1;
+                        mass += (atomicMass[sym] || 0) * mul;
+                    }
+                }
+                return mass;
+            }
+            try{ i=0; return Math.max(0, Math.round(parseSeg())); }catch(e){ return 0; }
+        }
+
+        // --- game state ---
+        let gameState = 'start';
+        let score = 0;
+        let gameTime = 0;
+        let debugMode = false;
+        let debugClickCount = 0; // デバッグボタンのクリック回数
+        let isInvertedMode = false; // 色反転モード
+        let difficulty = 'normal';
+        let lastBombTime = 0;
+        
+        // FPS制御
+        let lastTime = 0;
+        const targetFPS = 100;
+        const frameTime = 1000 / targetFPS;
+        
+        // 弾幕パターン用の角度管理
+        let circularBurstBaseAngle = 0;
+        let laserBaseAngle = 0;
+
+        // player
+        let player = { x: canvas.width/2, y: canvas.height-100, width:8, height:8, lives:3, bombs:6, speed:4, slowSpeed:2, invulnerable:0 };
+
+        // arrays
+        let playerBullets = [], enemyBullets = [], lasers = [], enemies = [], quizWalls = [];
+        let boss = null;
+        let particles = []; // パーティクルエフェクト用配列
+
+        // input
+        const keys = {};
+        let lastAdminDamageTime = 0;
+        document.addEventListener('keydown', e=> {
+            keys[e.key]=true;
+            // 管理者モード時のaキーでボスダメージ
+            if(debugMode && (e.key === 'a' || e.key === 'A') && boss && gameState === 'playing') {
+                const now = Date.now();
+                if(now - lastAdminDamageTime >= 1000) { // 1秒クールタイム
+                    boss.hp -= 1000;
+                    lastAdminDamageTime = now;
+                }
+            }
+        });
+        document.addEventListener('keyup', e=> keys[e.key]=false);
+
+        // boss/quiz state
+        let bossPhase = 0, currentQuizWall = null, bossInvulnerable = false, bossEnrageTime = 0;
+        let quizAnnounceTimer = 0, showingAnnouncement = false, waitingForNextQuiz = false, nextQuizTimer = 0;
+        let spiralDirection = 1;
+        let answerFeedback = { show: false, text: '', timer: 0 };
+
+        // boss warning
+        let bossWarningActive = false, bossWarningTimer = 0;
+
+        // 解説表示機能
+        function showExplanation(quiz, wasCorrect) {
+            const panel = document.getElementById('explanationPanel');
+            const content = document.getElementById('explanationContent');
+            
+            const correctAnswer = quiz.options[quiz.correct];
+            const resultText = wasCorrect ? '正解！' : '不正解！';
+            const resultColor = wasCorrect ? (isInvertedMode ? '#080' : '#0f0') : (isInvertedMode ? '#800' : '#f00');
+    
+            content.innerHTML = `
+                <div class="question-text">問題: ${quiz.question}</div>
+                <div class="answer-text">正解: ${correctAnswer}</div>
+                <div style="color: ${resultColor}; font-weight: bold; margin-bottom: 10px;">${resultText}</div>
+                <div class="explanation-text">${quiz.explanation}</div>
+            `;
+    
+            panel.style.display = 'block';
+        }
+
+        // ← 新しい関数として分離
+        function toggleInvertedMode() {
+            isInvertedMode = !isInvertedMode;
+            const body = document.body;
+            const gameContainer = document.getElementById('gameContainer');
+            const canvas = document.getElementById('gameCanvas');
+            const startScreen = document.getElementById('startScreen');
+            const explanationPanel = document.getElementById('explanationPanel');
+            
+            if (isInvertedMode) {
+                body.classList.add('inverted');
+                gameContainer.classList.add('inverted');
+                canvas.classList.add('inverted');
+                startScreen.classList.add('inverted');
+                explanationPanel.classList.add('inverted');
+            } else {
+                body.classList.remove('inverted');
+                gameContainer.classList.remove('inverted');
+                canvas.classList.remove('inverted');
+                startScreen.classList.remove('inverted');
+                explanationPanel.classList.remove('inverted');
+            }
+        }
+
+        // 難易度設定
+        function getDifficultySettings() {
+            switch(difficulty) {
+                case 'easy':
+                    return {
+                        bulletMultiplier: 0.6,
+                        bossMaxPhase: 2,
+                        quizWallSpeed: 0.6,
+                        attackCooldownMultiplier: 1.8,
+                        enemySpawnRate: 0.7,
+                        damageMultiplier: 1.0,
+                        quizCooldown: 360, // 6秒
+                        quizDamageMultiplier: 1.0
+                    };
+                case 'hard':
+                    return {
+                        bulletMultiplier: 1.5,
+                        bossMaxPhase: 4,
+                        quizWallSpeed: 1.25,
+                        attackCooldownMultiplier: 0.6,
+                        enemySpawnRate: 1.3,
+                        damageMultiplier: 1.0,
+                        quizCooldown: 360, // 6秒
+                        quizDamageMultiplier: 1.0
+                    };
+                case 'academic':
+                    return {
+                        bulletMultiplier: 1.8,
+                        bossMaxPhase: 5, // 第6形態まで（phase 0-5）
+                        quizWallSpeed: 1.4,
+                        attackCooldownMultiplier: 0.4,
+                        enemySpawnRate: 1.5,
+                        damageMultiplier: 0.2, // ショットダメージ0.2倍
+                        quizCooldown: 120, // 2秒
+                        quizDamageMultiplier: 3.5, // クイズダメージ3.5倍（5倍から調整）
+                        enemyHpMultiplier: 0.2 // ショットダメージが0.2倍なので体力も1/5に
+                    };
+                default:
+                    return {
+                        bulletMultiplier: 1.0,
+                        bossMaxPhase: 3,
+                        quizWallSpeed: 1.0,
+                        attackCooldownMultiplier: 1.0,
+                        enemySpawnRate: 1.0,
+                        damageMultiplier: 1.0,
+                        quizCooldown: 360, // 6秒
+                        quizDamageMultiplier: 1.0
+                    };
+            }
+        }
+
+        // start screen benzene particles
+        const benzeneParticles = [];
+        function spawnBenzeneParticle(){ const size = 8 + Math.random()*28; benzeneParticles.push({ x: Math.random()*startAnimCanvas.width, y: startAnimCanvas.height + size, size:size, speed:0.2 + Math.random()*0.8, angle: Math.random()*Math.PI*2, life:200 + Math.random()*200, alpha:0 }); }
+        
+// 高校有機化学範囲のクイズ（150問以上、解説付き）
+        const chemQuizzes = [
+            { 
+                question: "メタンの分子式は？", 
+                options:["CH₄","C₂H₆","C₃H₈","C₄H₁₀"], 
+                correct:0,
+                explanation: "メタンは最も単純なアルカンで、炭素原子1個に水素原子4個が結合した分子式CH₄を持ちます。天然ガスの主成分であり、完全燃焼すると二酸化炭素と水が生成されます。"
+            },
+            { 
+                question: "エタンの分子式は？", 
+                options:["C₂H₆","C₃H₈","C₄H₁₀","CH₄"], 
+                correct:0,
+                explanation: "エタンは炭素原子2個を持つアルカンで、分子式はC₂H₆です。アルカンの一般式CₙH₂ₙ₊₂にn=2を代入すると得られます。石油ガスの成分として利用されます。"
+            },
+            { 
+                question: "プロパンの分子式は？", 
+                options:["C₃H₈","C₂H₆","C₄H₁₀","C₅H₁₂"], 
+                correct:0,
+                explanation: "プロパンは炭素原子3個のアルカンで、分子式はC₃H₈です。LPガス（液化石油ガス）の主成分として家庭用燃料に広く使用されています。常温では気体ですが、加圧により液化します。"
+            },
+            { 
+                question: "ブタンの分子式は？", 
+                options:["C₄H₁₀","C₃H₈","C₅H₁₂","C₆H₆"], 
+                correct:0,
+                explanation: "ブタンは炭素原子4個のアルカンで、分子式はC₄H₁₀です。n-ブタンとイソブタン（2-メチルプロパン）の構造異性体が存在します。ライター用燃料として使用されます。"
+            },
+            { 
+                question: "ベンゼンの分子式は？", 
+                options:["C₆H₆","C₆H₁₂","C₆H₁₄","C₇H₈"], 
+                correct:0,
+                explanation: "ベンゼンは芳香族化合物の代表で、分子式はC₆H₆です。6個の炭素が正六角形に配置され、π電子の非局在化により特別な安定性を持ちます。多くの有機化合物の出発原料として重要です。"
+            },
+            { 
+                question: "エタノールの分子式は？", 
+                options:["C₂H₅OH","CH₃OH","C₃H₇OH","C₄H₉OH"], 
+                correct:0,
+                explanation: "エタノール（エチルアルコール）は分子式C₂H₅OHまたはC₂H₆Oで表される1級アルコールです。アルコール飲料の主成分で、工業的にはエチレンの水和反応や糖の発酵により製造されます。"
+            },
+            { 
+                question: "ホルムアルデヒドの分子式は？", 
+                options:["HCHO","CH₃OH","CH₃CHO","CO₂"], 
+                correct:0,
+                explanation: "ホルムアルデヒド（メタナール）は最も単純なアルデヒドで、分子式はHCHOです。刺激的な臭いを持ち、37%水溶液はホルマリンと呼ばれ防腐剤として使用されます。樹脂の原料にもなります。"
+            },
+            { 
+                question: "酢酸の分子式は？", 
+                options:["CH₃COOH","CH₃CHO","CH₃OH","HCOOH"], 
+                correct:0,
+                explanation: "酢酸（エタン酸）は分子式CH₃COOHのカルボン酸です。食酢の主成分（約3-5%）で、エタノールの酢酸発酵により生成されます。工業的には酢酸メチルのカルボニル化で製造されます。"
+            },
+            { 
+                question: "ギ酸の分子式は？", 
+                options:["HCOOH","CHO","CH₃OH","C₂H₅OH"], 
+                correct:0,
+                explanation: "ギ酸（メタン酸）は最も単純なカルボン酸で、分子式はHCOOHです。アリが分泌する毒としても知られており、還元性を示すという特殊な性質があります。革なめしや防腐剤に使用されます。"
+            },
+            { 
+                question: "アセトンの分子式は？", 
+                options:["(CH₃)₂CO","C₃H₆O","C₂H₅OH","C₃H₈O"], 
+                correct:0,
+                explanation: "アセトン（プロパノン）は最も単純なケトンで、分子式は(CH₃)₂COまたはC₃H₆Oです。特有の甘い臭いを持つ無色の液体で、マニキュア除去剤や工業溶媒として広く使用されています。"
+            },
+            
+            { 
+                question: "カルボニル基の構造式は？", 
+                options:["-CO-","-OH","-NH₂","-CHO"], 
+                correct:0,
+                explanation: "カルボニル基は>C=Oまたは-CO-で表される官能基で、炭素と酸素が二重結合したものです。アルデヒド、ケトン、カルボン酸、エステルなどに含まれ、極性が大きく反応性に富みます。"
+            },
+            { 
+                question: "ヒドロキシ基の構造式は？", 
+                options:["-OH","-COOH","-NH₂","-CHO"], 
+                correct:0,
+                explanation: "ヒドロキシ基（水酸基）は-OHで表される官能基です。アルコールやフェノールに含まれ、水素結合により沸点を上昇させます。極性が大きく、水溶性を高める効果があります。"
+            },
+            { 
+                question: "カルボキシル基の構造式は？", 
+                options:["-COOH","-CO-","-CHO","-OH"], 
+                correct:0,
+                explanation: "カルボキシル基は-COOHで表される官能基で、カルボニル基とヒドロキシ基が結合したものです。カルボン酸に含まれ、水素イオンを放出して酸性を示します。"
+            },
+            { 
+                question: "アルデヒド基の構造式は？", 
+                options:["-CHO","-COOH","-OH","-NH₂"], 
+                correct:0,
+                explanation: "アルデヒド基は-CHOで表される官能基で、炭素の末端にカルボニル基があるものです。還元性を示し、銀鏡反応やフェーリング反応に陽性を示します。"
+            },
+            
+            { 
+                question: "銀鏡反応で還元されるのは？", 
+                options:["アルデヒド","ケトン","アルコール","エステル"], 
+                correct:0,
+                explanation: "銀鏡反応は、アルデヒドがトレンス試薬（アンモニア性硝酸銀水溶液）により酸化される反応です。アルデヒドがカルボン酸に酸化され、銀イオンが金属銀に還元されて試験管内壁に銀鏡を形成します。"
+            },
+            { 
+                question: "フェーリング反応に陽性なのは？", 
+                options:["アルデヒド","ケトン","アルコール","エーテル"], 
+                correct:0,
+                explanation: "フェーリング反応は、アルデヒドがフェーリング液（酒石酸カリウムナトリウムを含む塩基性硫酸銅溶液）により酸化される反応です。青色の銅(II)イオンが赤色の酸化銅(I)に還元されます。"
+            },
+            { 
+                question: "還元性を示すのは？", 
+                options:["アルデヒド","ケトン","エステル","エーテル"], 
+                correct:0,
+                explanation: "アルデヒドは-CHO基を持ち、容易に酸化されてカルボン酸になるため還元性を示します。これに対してケトンは炭素鎖の中央にカルボニル基があるため、通常は還元性を示しません。"
+            },
+            
+            { 
+                question: "エタノールの工業的製法は？", 
+                options:["エチレンの水和","アセチレンの水和","プロパンの酸化","メタンの水和"], 
+                correct:0,
+                explanation: "工業的なエタノール製法は主に2つあります。①エチレン（C₂H₄）に水を付加する直接水和法：C₂H₄ + H₂O → C₂H₅OH、②糖質の発酵法です。水和法は高温高圧下で酸触媒を用いて行われます。"
+            },
+            { 
+                question: "酢酸の工業的製法は？", 
+                options:["カルボニル化","水和","酸化","還元"], 
+                correct:0,
+                explanation: "酢酸の工業的製法はメタノールのカルボニル化反応（モンサント法）です：CH₃OH + CO → CH₃COOH。ロジウム触媒を用いて一酸化炭素とメタノールから直接酢酸を合成する効率的な方法です。"
+            },
+            
+            { 
+                question: "フェノールの化学式は？", 
+                options:["C₆H₅OH","C₆H₆O","C₆H₆","C₆H₅NH₂"], 
+                correct:0,
+                explanation: "フェノールはベンゼン環にヒドロキシ基が直接結合した化合物で、分子式はC₆H₅OHです。ベンゼン環との共役により、通常のアルコールより酸性が強く、水に微溶性を示します。"
+            },
+            { 
+                question: "トルエンの化学式は？", 
+                options:["C₇H₈","C₆H₆","C₈H₁₀","C₆H₅OH"], 
+                correct:0,
+                explanation: "トルエン（メチルベンゼン）はベンゼン環にメチル基が結合した芳香族化合物で、分子式はC₇H₈です。ベンゼンより反応性が高く、ニトロ化では主にo-（オルト）位とp-（パラ）位に置換されます。"
+            },
+            
+            { 
+                question: "1級アルコールの例は？", 
+                options:["エタノール","2-プロパノール","tert-ブタノール","フェノール"], 
+                correct:0,
+                explanation: "1級アルコールは-CH₂OH基を持つアルコールです。エタノール（C₂H₅OH）は代表的な1級アルコールで、酸化すると最初にアルデヒド、さらに酸化されるとカルボン酸になります。"
+            },
+            { 
+                question: "2級アルコールの例は？", 
+                options:["2-プロパノール","メタノール","エタノール","1-ブタノール"], 
+                correct:0,
+                explanation: "2級アルコールは>CHOH基を持つアルコールです。2-プロパノール（イソプロパノール）(CH₃)₂CHOHは代表例で、酸化するとケトン（アセトン）になります。消毒用アルコールとして使用されます。"
+            },
+            { 
+                question: "3級アルコールの例は？", 
+                options:["tert-ブタノール","エタノール","2-プロパノール","メタノール"], 
+                correct:0,
+                explanation: "3級アルコールは>COH基を持つアルコールです。tert-ブタノール（2-メチル-2-プロパノール）(CH₃)₃COHは代表例で、酸化されにくい特徴があります。これは隣接する炭素に水素がないためです。"
+            },
+            
+            { 
+                question: "アルデヒドを酸化すると生成するのは？", 
+                options:["カルボン酸","ケトン","アルコール","エステル"], 
+                correct:0,
+                explanation: "アルデヒド（-CHO）を酸化すると、同じ炭素数のカルボン酸（-COOH）が生成されます。例：CH₃CHO（アセトアルデヒド）→ CH₃COOH（酢酸）。この反応は銀鏡反応やフェーリング反応で確認できます。"
+            },
+            { 
+                question: "1級アルコールを酸化すると生成するのは？", 
+                options:["アルデヒド","ケトン","エステル","エーテル"], 
+                correct:0,
+                explanation: "1級アルコール（-CH₂OH）を穏やかに酸化すると、まずアルデヒド（-CHO）が生成されます。例：C₂H₅OH → CH₃CHO。さらに酸化を続けるとカルボン酸になります：CH₃CHO → CH₃COOH。"
+            },
+            { 
+                question: "2級アルコールを酸化すると生成するのは？", 
+                options:["ケトン","アルデヒド","カルボン酸","エステル"], 
+                correct:0,
+                explanation: "2級アルコール（>CHOH）を酸化すると、ケトン（>C=O）が生成されます。例：(CH₃)₂CHOH（2-プロパノール）→ (CH₃)₂CO（アセトン）。ケトンはそれ以上酸化されにくい特徴があります。"
+            },
+            
+            { 
+                question: "エステル化において脱水されるのは？", 
+                options:["水","アルコール","酸","エステル"], 
+                correct:0,
+                explanation: "エステル化反応では、カルボン酸（-COOH）とアルコール（-OH）が反応して水（H₂O）が脱離し、エステル結合（-COO-）が形成されます：R-COOH + R'-OH → R-COO-R' + H₂O"
+            },
+            { 
+                question: "けん化で生成するのは？", 
+                options:["カルボン酸塩","エステル","アルデヒド","ケトン"], 
+                correct:0,
+                explanation: "けん化（鹸化）反応では、エステルが塩基（NaOHなど）と反応してカルボン酸塩とアルコールが生成されます：R-COO-R' + NaOH → R-COONa + R'-OH。油脂のけん化でセッケンが作られます。"
+            },
+            
+            { 
+                question: "グルコースの分子式は？", 
+                options:["C₆H₁₂O₆","C₆H₆O₆","C₅H₁₀O₅","C₁₂H₂₂O₁₁"], 
+                correct:0,
+                explanation: "グルコース（ブドウ糖）は最も重要な単糖で、分子式はC₆H₁₂O₆です。生物のエネルギー源として重要で、植物の光合成で作られ、動物の細胞呼吸で分解されます。血糖として血液中に存在します。"
+            },
+            { 
+                question: "スクロースの分子式は？", 
+                options:["C₁₂H₂₂O₁₁","C₆H₁₂O₆","C₅H₁₀O₅","C₆H₆O₆"], 
+                correct:0,
+                explanation: "スクロース（ショ糖）はグルコースとフルクトースがグリコシド結合した二糖で、分子式はC₁₂H₂₂O₁₁です。サトウキビやテンサイから抽出される砂糖の主成分で、還元性を示しません。"
+            },
+            { 
+                question: "デンプンとセルロースの構成単位は？", 
+                options:["グルコース","フルクトース","ガラクトース","リボース"], 
+                correct:0,
+                explanation: "デンプンとセルロースは共にグルコースが重合した多糖です。デンプンはα-1,4結合とα-1,6結合（分岐）、セルロースはβ-1,4結合で構成されます。結合の違いにより性質が大きく異なります。"
+            },
+            
+            { 
+                question: "アミノ酸の基本構造に含まれる官能基は？", 
+                options:["アミノ基とカルボキシル基","アミノ基とアルデヒド基","ヒドロキシ基とカルボニル基","エステル基とアミド基"], 
+                correct:0,
+                explanation: "アミノ酸は、同じ炭素原子にアミノ基（-NH₂）とカルボキシル基（-COOH）が結合した化合物です。この構造により、アミノ酸は両性化合物として働き、pH により正負の電荷を持ちます。"
+            },
+            { 
+                question: "ペプチド結合はどの結合？", 
+                options:["アミド結合","エステル結合","エーテル結合","グリコシド結合"], 
+                correct:0,
+                explanation: "ペプチド結合は、アミノ酸のカルボキシル基と別のアミノ酸のアミノ基の間に形成されるアミド結合（-CO-NH-）です。この結合によりアミノ酸が鎖状に連結してペプチドやタンパク質が形成されます。"
+            },
+            
+            { 
+                question: "不飽和結合を持つのは？", 
+                options:["エチレン","エタン","メタン","プロパン"], 
+                correct:0,
+                explanation: "エチレン（エテン）C₂H₄は炭素-炭素二重結合（C=C）を持つアルケンです。この不飽和結合により付加反応を起こしやすく、重合してポリエチレンになります。植物ホルモンとしても機能します。"
+            },
+            { 
+                question: "アルケンの一般式は？", 
+                options:["CₙH₂ₙ","CₙH₂ₙ₊₂","CₙH₂ₙ₋₂","CₙH₂ₙ₋₆"], 
+                correct:0,
+                explanation: "アルケンは一つの二重結合を持つ炭化水素で、一般式はCₙH₂ₙです（n≥2）。アルカンより水素原子が2個少なく、不飽和度1を持ちます。付加反応や重合反応を起こしやすい特徴があります。"
+            },
+            { 
+                question: "アルカンの一般式は？", 
+                options:["CₙH₂ₙ₊₂","CₙH₂ₙ","CₙH₂ₙ₋₂","CₙH₂ₙ₋₆"], 
+                correct:0,
+                explanation: "アルカンは飽和炭化水素で、一般式はCₙH₂ₙ₊₂です。全ての炭素-炭素結合が単結合で、可能な限り多くの水素原子と結合しているため「飽和」と呼ばれます。メタン、エタン、プロパンなどが代表例です。"
+            },
+
+            { 
+                question: "ベンゼン環の炭素数は？", 
+                options:["6","5","7","8"], 
+                correct:0,
+                explanation: "ベンゼン環は6個の炭素原子が正六角形に配置された平面構造です。各炭素原子は120°の結合角で隣接する炭素と結合し、π電子が環全体に非局在化することで特別な安定性（芳香族性）を持ちます。"
+            },
+            { 
+                question: "芳香族化合物の特徴は？", 
+                options:["平面構造","立体構造","鎖状構造","分岐構造"], 
+                correct:0,
+                explanation: "芳香族化合物の最大の特徴は平面構造です。ベンゼン環の全ての原子が同一平面上にあり、π電子の非局在化により安定化されています。この平面性により特有の反応性と物理的性質を示します。"
+            },
+            
+            { 
+                question: "アセチレンの分子式は？", 
+                options:["C₂H₂","C₂H₄","C₂H₆","C₃H₄"], 
+                correct:0,
+                explanation: "アセチレン（エチン）は最も単純なアルキンで、分子式はC₂H₂です。炭素-炭素三重結合（C≡C）を持ち、直線形の分子構造をしています。溶接用ガスとして使用され、高温で燃焼します。"
+            },
+            { 
+                question: "三重結合を持つのは？", 
+                options:["アセチレン","エチレン","エタン","プロピレン"], 
+                correct:0,
+                explanation: "アセチレン（C₂H₂）は炭素-炭素三重結合（C≡C）を持つアルキンです。三重結合は1つのσ結合と2つのπ結合からなり、結合エネルギーが大きく、分子は直線形になります。"
+            },
+            
+            { 
+                question: "メチル基の構造式は？", 
+                options:["CH₃-","CH₂-","CH-","-OH"], 
+                correct:0,
+                explanation: "メチル基は-CH₃で表される1価のアルキル基です。メタンから水素原子1個を除去した基で、最も単純なアルキル基として多くの有機化合物に含まれています。電子供与性を示します。"
+            },
+            { 
+                question: "エチル基の構造式は？", 
+                options:["C₂H₅-","CH₃-","C₃H₇-","C₄H₉-"], 
+                correct:0,
+                explanation: "エチル基は-C₂H₅または-CH₂CH₃で表される1価のアルキル基です。エタンから水素原子1個を除去した基で、エタノールやエチルエステルなどの構成要素として重要です。"
+            },
+            
+            { 
+                question: "異性体の定義は？", 
+                options:["分子式が同じで構造が異なる","分子式が異なり構造が同じ","分子式も構造も同じ","分子式も構造も異なる"], 
+                correct:0,
+                explanation: "異性体とは、同一の分子式を持ちながら構造（原子の結合の仕方や配置）が異なる化合物のことです。構造異性体、立体異性体（光学異性体、幾何異性体）などの種類があり、性質が異なることが多いです。"
+            },
+            { 
+                question: "構造異性体に分類されるのは？", 
+                options:["n-ブタンとイソブタン","右手と左手の関係","鏡像関係","回転による関係"], 
+                correct:0,
+                explanation: "構造異性体は原子の結合順序が異なる異性体です。n-ブタン（CH₃CH₂CH₂CH₃）とイソブタン（(CH₃)₃CH）は共にC₄H₁₀ですが、炭素骨格が直鎖と分岐で異なるため構造異性体です。"
+            },
+            
+            { 
+                question: "アルコール発酵で生成するのは？", 
+                options:["エタノール","メタノール","酢酸","ホルムアルデヒド"], 
+                correct:0,
+                explanation: "アルコール発酵では、酵母（ザイマーゼ）の働きにより糖質がエタノールと二酸化炭素に分解されます：C₆H₁₂O₆ → 2C₂H₅OH + 2CO₂。日本酒、ビール、ワインなどの製造に利用されています。"
+            },
+            { 
+                question: "酢酸発酵で生成するのは？", 
+                options:["酢酸","エタノール","乳酸","ギ酸"], 
+                correct:0,
+                explanation: "酢酸発酵では、酢酸菌の働きによりエタノールが酸化されて酢酸が生成されます：C₂H₅OH + O₂ → CH₃COOH + H₂O。食酢の製造に利用され、アルコール発酵に続いて起こることが多いです。"
+            },
+            
+            { 
+                question: "油脂の構成成分は？", 
+                options:["グリセリンと高級脂肪酸","グルコースと脂肪酸","アミノ酸と糖","核酸とタンパク質"], 
+                correct:0,
+                explanation: "油脂はグリセリン（C₃H₅(OH)₃）1分子と高級脂肪酸3分子がエステル結合したトリグリセリド（トリアシルグリセロール）です。動植物の重要なエネルギー貯蔵物質として機能します。"
+            },
+            { 
+                question: "セッケンの主成分は？", 
+                options:["高級脂肪酸のナトリウム塩","高級アルコール","グリセリン","エステル"], 
+                correct:0,
+                explanation: "セッケンは高級脂肪酸のナトリウム塩またはカリウム塩です。油脂をNaOHで加水分解（けん化）すると生成されます：R-COONa（R：長鎖アルキル基）。界面活性作用により洗浄効果を示します。"
+            },
+            
+            { 
+                question: "付加重合の例は？", 
+                options:["ポリエチレン","ナイロン","ポリエステル","タンパク質"], 
+                correct:0,
+                explanation: "付加重合は、不飽和結合を持つモノマーが開裂して結合する重合反応です。ポリエチレンはエチレン（C₂H₄）が付加重合したもので：nC₂H₄ → (-C₂H₄-)ₙ。副生成物を生じません。"
+            },
+            { 
+                question: "縮合重合の例は？", 
+                options:["ナイロン","ポリエチレン","ポリプロピレン","ポリ塩化ビニル"], 
+                correct:0,
+                explanation: "縮合重合は、官能基を持つモノマー同士が結合する際に小分子（水など）を脱離する重合反応です。ナイロンはジアミンとジカルボン酸が縮合重合してアミド結合を形成します。"
+            },
+            
+            { 
+                question: "示性式CH₃CH₂OHで表される化合物は？", 
+                options:["エタノール","ジメチルエーテル","プロパノール","メタノール"], 
+                correct:0,
+                explanation: "CH₃CH₂OHはエタノール（エチルアルコール）の示性式です。分子式C₂H₆Oで表され、1級アルコールに分類されます。飲用アルコールの主成分で、工業溶媒としても重要です。"
+            },
+            { 
+                question: "示性式(CH₃)₂Oで表される化合物は？", 
+                options:["ジメチルエーテル","エタノール","アセトン","酢酸"], 
+                correct:0,
+                explanation: "（CH₃)₂Oはジメチルエーテルの示性式です。分子式C₂H₆Oでエタノールと異性体ですが、エーテル結合（-O-）を持つため性質が大きく異なります。沸点が低く、麻酔作用があります。"
+            },
+            
+            { 
+                question: "ヨードホルム反応に陽性なのは？", 
+                options:["エタノール","メタノール","エーテル","ベンゼン"], 
+                correct:0,
+                explanation: "ヨードホルム反応は、CH₃CO-またはCH₃CHOH-構造を持つ化合物がヨウ素と塩基の存在下で黄色のヨードホルム（CHI₃）を生成する反応です。エタノールはこの構造を持つため陽性を示します。"
+            },
+            { 
+                question: "カルボン酸の一般式は？", 
+                options:["CₙH₂ₙ₊₁COOH","CₙH₂ₙCOOH","CₙH₂ₙ₋₁COOH","CₙH₂ₙ₊₂COOH"], 
+                correct:0,
+                explanation: "カルボン酸の一般式はR-COOHまたはCₙH₂ₙ₊₁COOHです（R：アルキル基）。カルボキシル基（-COOH）により酸性を示し、金属と反応して塩を形成します。最も重要な有機酸の一群です。"
+            },
+
+            // === 芳香族化合物の性質 ===
+            { 
+                question: "ベンゼン環の炭素数は？", 
+                options:["6","5","7","8"], 
+                correct:0,
+                explanation: "ベンゼン環は6個の炭素原子が正六角形に配置された環状構造です。各炭素はsp²混成軌道を形成し、残ったp軌道が重なって非局在化したπ電子雲を形成します。これが芳香族性の基礎となります。"
+            },
+            { 
+                question: "芳香族化合物の特徴は？", 
+                options:["平面構造と非局在化電子","立体構造","鎖状構造","分岐構造"], 
+                correct:0,
+                explanation: "芳香族化合物は平面構造を持ち、π電子が環全体に非局在化しています。この電子の非局在化により共鳴安定化され、通常の不飽和化合物とは異なる特殊な性質（芳香族性）を示します。"
+            },
+            { 
+                question: "ベンゼンの置換反応で生成しやすいのは？", 
+                options:["オルト・パラ配向","メタ配向","ランダム配向","置換されない"], 
+                correct:0,
+                explanation: "ベンゼンの置換反応では、既存の置換基の性質により配向性が決まります。電子供与性基（-OH、-NH₂、アルキル基など）はオルト位とパラ位への置換を促進し、これをオルト・パラ配向性と呼びます。"
+            },
+            { 
+                question: "トルエンのニトロ化で主生成物は？", 
+                options:["o-ニトロトルエンとp-ニトロトルエン","m-ニトロトルエン","置換されない","全ての位置"], 
+                correct:0,
+                explanation: "トルエンのメチル基は電子供与性基のため、オルト・パラ配向性を示します。ニトロ化では主に2-ニトロトルエン（オルト体）と4-ニトロトルエン（パラ体）が生成され、メタ体はほとんど生成されません。"
+            },
+            { 
+                question: "ベンゼンのハロゲン化に必要な触媒は？", 
+                options:["ハロゲン化鉄","水","酸","塩基"], 
+                correct:0,
+                explanation: "ベンゼンの臭素化や塩素化には、ハロゲン化鉄（FeBr₃、FeCl₃など）が触媒として必要です。この触媒により分極したハロゲン分子が求電子剤として働き、芳香族求電子置換反応が進行します。"
+            },
+
+            // === 異性体 ===
+            { 
+                question: "立体異性体に含まれるのは？", 
+                options:["光学異性体と幾何異性体","構造異性体","官能基異性体","位置異性体"], 
+                correct:0,
+                explanation: "立体異性体は同じ結合順序を持ちながら、原子の空間的配置が異なる異性体です。光学異性体（エナンチオマー）と幾何異性体（シス-トランス異性体）が含まれます。"
+            },
+            { 
+                question: "光学異性体が存在する条件は？", 
+                options:["不斉炭素原子の存在","二重結合の存在","ベンゼン環の存在","官能基の違い"], 
+                correct:0,
+                explanation: "光学異性体が存在するためには、4つの異なる原子または基が結合した不斉炭素原子（キラル中心）の存在が必要です。この場合、鏡像関係にある2つの光学異性体（エナンチオマー）が存在します。"
+            },
+            { 
+                question: "cis-trans異性体が存在する条件は？", 
+                options:["C=C二重結合と異なる置換基","C-C単結合","ベンゼン環","不斉炭素"], 
+                correct:0,
+                explanation: "cis-trans異性体（幾何異性体）が存在するためには、C=C二重結合があり、かつ各炭素に異なる2つの原子または基が結合している必要があります。二重結合のため回転が制限され、異性体が生じます。"
+            },
+
+            // === 重合反応 ===
+            { 
+                question: "ポリエチレンテレフタラートは？", 
+                options:["縮合重合体","付加重合体","天然高分子","無機高分子"], 
+                correct:0,
+                explanation: "ポリエチレンテレフタラート（PET）は、エチレングリコールとテレフタル酸が縮合重合してできるポリエステルです。重合時に水が脱離するため縮合重合に分類されます。ペットボトルや衣料繊維に使用されます。"
+            },
+            { 
+                question: "ポリスチレンは？", 
+                options:["付加重合体","縮合重合体","天然高分子","無機高分子"], 
+                correct:0,
+                explanation: "ポリスチレンはスチレン（フェニルエチレン）が付加重合してできるプラスチックです：n(C₆H₅CH=CH₂) → (-CH₂CHC₆H₅-)ₙ。副生成物を生じない付加重合の典型例で、発泡スチロールなどに使用されます。"
+            },
+            { 
+                question: "6,6-ナイロンの原料は？", 
+                options:["ヘキサメチレンジアミンとアジピン酸","エチレングリコールとテレフタル酸","スチレン","エチレン"], 
+                correct:0,
+                explanation: "6,6-ナイロン（ナイロン66）は、ヘキサメチレンジアミン（1,6-ジアミノヘキサン）とアジピン酸（1,6-ヘキサン二酸）の縮合重合で合成されます。両方とも炭素数6のため6,6-ナイロンと呼ばれます。"
+            },
+
+            // === 発酵・醸造 ===
+            { 
+                question: "乳酸発酵で生成するのは？", 
+                options:["乳酸","エタノール","酢酸","ギ酸"], 
+                correct:0,
+                explanation: "乳酸発酵では、乳酸菌の働きにより糖質が乳酸に変換されます：C₆H₁₂O₆ → 2CH₃CHOHCOOH。ヨーグルト、チーズ、漬物などの製造に利用され、保存性を高める効果があります。"
+            },
+            { 
+                question: "アルコール発酵に関与する酵素は？", 
+                options:["ザイマーゼ","ペプシン","アミラーゼ","リパーゼ"], 
+                correct:0,
+                explanation: "アルコール発酵にはザイマーゼ（酵母に含まれる酵素複合体）が関与します。この酵素により糖質がエタノールと二酸化炭素に分解されます。ザイマーゼは実際には複数の酵素の総称です。"
+            },
+            { 
+                question: "デンプンの糖化に関与する酵素は？", 
+                options:["アミラーゼ","ザイマーゼ","ペプシン","リパーゼ"], 
+                correct:0,
+                explanation: "デンプンの糖化にはアミラーゼが関与します。α-アミラーゼはデンプンを部分的に分解し、β-アミラーゼはマルトースまで分解します。日本酒製造では麹菌のアミラーゼが重要な役割を果たします。"
+            },
+
+            // === 油脂・セッケン ===
+            { 
+                question: "硬化油の製造方法は？", 
+                options:["水素付加","酸化","還元","加水分解"], 
+                correct:0,
+                explanation: "硬化油は液体の植物油に水素を付加（水素添加）して製造します。不飽和脂肪酸の二重結合に水素が付加して飽和脂肪酸になり、常温で固体のマーガリンなどが作られます。ニッケル触媒が使用されます。"
+            },
+            { 
+                question: "ヨウ素価が表すのは？", 
+                options:["不飽和度","分子量","融点","比重"], 
+                correct:0,
+                explanation: "ヨウ素価は油脂100gに付加できるヨウ素のグラム数で、不飽和度（二重結合の多さ）を示します。値が大きいほど不飽和度が高く、液体の油に近い性質を示します。油脂の品質評価に使用されます。"
+            },
+            { 
+                question: "けん化価が表すのは？", 
+                options:["油脂1g中のエステル結合量","不飽和度","分子量","比重"], 
+                correct:0,
+                explanation: "けん化価は油脂1gを完全にけん化するのに必要な水酸化カリウムのミリグラム数です。油脂中のエステル結合の量を示し、脂肪酸の分子量と関係があります。分子量が小さい脂肪酸ほど値が大きくなります。"
+            },
+
+            // === 洗剤・界面活性剤 ===
+            { 
+                question: "合成洗剤の主成分は？", 
+                options:["アルキル硫酸ナトリウム","高級脂肪酸ナトリウム","炭酸ナトリウム","水酸化ナトリウム"], 
+                correct:0,
+                explanation: "合成洗剤の主成分は陰イオン界面活性剤のアルキル硫酸ナトリウム（R-OSO₃Na）です。セッケンと異なり、硬水中でも沈殿を生じにくく、酸性でも安定な特長があります。"
+            },
+            { 
+                question: "界面活性剤の構造的特徴は？", 
+                options:["親水部と疎水部を持つ","全て親水性","全て疎水性","イオン性のみ"], 
+                correct:0,
+                explanation: "界面活性剤は一つの分子内に親水部（極性部分）と疎水部（非極性部分）を併せ持つ両親媒性分子です。この構造により水と油の界面に吸着して表面張力を下げ、洗浄作用や乳化作用を示します。"
+            },
+            { 
+                question: "カチオン性界面活性剤の例は？", 
+                options:["塩化アルキルアンモニウム","アルキル硫酸ナトリウム","高級脂肪酸ナトリウム","アルコール"], 
+                correct:0,
+                explanation: "カチオン性界面活性剤は正に荷電した親水部を持ちます。塩化アルキルアンモニウム（R-N⁺(CH₃)₃Cl⁻）が代表例で、殺菌作用があるため逆性セッケンとも呼ばれ、柔軟剤や消毒剤に使用されます。"
+            },
+
+            // === 染料・顔料 ===
+            { 
+                question: "アゾ染料の特徴的な構造は？", 
+                options:["-N=N-結合","ベンゼン環","カルボニル基","ヒドロキシ基"], 
+                correct:0,
+                explanation: "アゾ染料はアゾ基（-N=N-）を持つ染料の総称です。2つの芳香族化合物がアゾ基で連結された構造で、鮮やかな色を示します。メチルオレンジやコンゴーレッドなどが代表例です。"
+            },
+            { 
+                question: "インジゴの構造に含まれるのは？", 
+                options:["インドール環","ベンゼン環のみ","ピリジン環","イミダゾール環"], 
+                correct:0,
+                explanation: "インジゴ（藍）は2つのインドール環がC=C結合で連結された構造を持つ青色染料です。天然では藍の葉に配糖体として存在し、現在では合成により大量生産され、ジーンズの染色などに使用されます。"
+            },
+            { 
+                question: "媒染染料に必要なのは？", 
+                options:["金属イオン","酸","塩基","酸化剤"], 
+                correct:0,
+                explanation: "媒染染料は染料単独では繊維に定着しないため、金属イオン（Al³⁺、Fe³⁺、Cr³⁺など）を媒染剤として使用します。金属イオンが染料と繊維を橋渡しして結合させ、色を定着させます。"
+            },
+
+            // === 医薬品 ===
+            { 
+                question: "アスピリンの化学名は？", 
+                options:["アセチルサリチル酸","サリチル酸","安息香酸","酢酸"], 
+                correct:0,
+                explanation: "アスピリンの化学名はアセチルサリチル酸です。サリチル酸のヒドロキシ基をアセチル化した化合物で、解熱・鎮痛・抗炎症作用があります。プロスタグランジンの合成を阻害することで効果を発揮します。"
+            },
+            { 
+                question: "サリチル酸の誘導体でないのは？", 
+                options:["アセトアミノフェン","アスピリン","サリチル酸メチル","サリチルアミド"], 
+                correct:0,
+                explanation: "アセトアミノフェン（パラセタモール）はサリチル酸の誘導体ではなく、パラアミノフェノールの誘導体です。解熱・鎮痛作用がありますが、抗炎症作用は弱く、作用機序もサリチル酸系とは異なります。"
+            },
+            { 
+                question: "ペニシリンの作用機序は？", 
+                options:["細胞壁合成阻害","タンパク質合成阻害","DNA複製阻害","細胞膜破壊"], 
+                correct:0,
+                explanation: "ペニシリンは細菌の細胞壁合成を阻害する抗生物質です。ペプチドグリカンの架橋形成を阻害することで、細菌の細胞壁を弱化させ、浸透圧により細菌を破裂させます。人間の細胞には細胞壁がないため選択毒性があります。"
+            },
+
+            // === 香料・精油 ===
+            { 
+                question: "メントールの分子式は？", 
+                options:["C₁₀H₂₀O","C₁₀H₁₆O","C₈H₁₆O","C₁₂H₂₄O"], 
+                correct:0,
+                explanation: "メントール（(-)-メントール）はハッカの主成分で、分子式はC₁₀H₂₀Oです。冷涼感を与えるテルペンアルコールで、不斉炭素を3個持つため複数の立体異性体が存在します。"
+            },
+            { 
+                question: "カンファーの分子式は？", 
+                options:["C₁₀H₁₆O","C₁₀H₂₀O","C₈H₁₄O","C₁₂H₂₀O"], 
+                correct:0,
+                explanation: "カンファー（樟脳）はクスノキから抽出される二環性のテルペンケトンで、分子式はC₁₀H₁₆Oです。特有の香りを持ち、防虫剤や外用薬として使用されます。昇華しやすい性質があります。"
+            },
+            { 
+                question: "リモネンの分子式は？", 
+                options:["C₁₀H₁₆","C₁₀H₂₀","C₈H₁₄","C₁₂H₂₄"], 
+                correct:0,
+                explanation: "リモネンは柑橘類の果皮に含まれるモノテルペンで、分子式はC₁₀H₁₆です。光学異性体が存在し、d-体はオレンジの香り、l-体はレモンの香りを持ちます。溶剤や香料として広く使用されています。"
+            },
+            { 
+                question: "バニリンに含まれる官能基は？", 
+                options:["アルデヒド基とメトキシ基","ケトン基とヒドロキシ基","エステル基とアミノ基","カルボキシル基とニトロ基"], 
+                correct:0,
+                explanation: "バニリン（バニラの香り成分）はベンゼン環にアルデヒド基（-CHO）、ヒドロキシ基（-OH）、メトキシ基（-OCH₃）が結合した化合物です。天然ではバニラビーンズに含まれ、現在は合成により大量生産されています。"
+            },
+
+            // === ビタミン ===
+            { 
+                question: "ビタミンCの化学名は？", 
+                options:["アスコルビン酸","酢酸","クエン酸","乳酸"], 
+                correct:0,
+                explanation: "ビタミンC（L-アスコルビン酸）は水溶性ビタミンで、コラーゲン合成に必要な補酵素です。還元性があるため酸化防止剤としても使用されます。欠乏すると壊血病を引き起こします。"
+            },
+            { 
+                question: "ビタミンB1の化学名は？", 
+                options:["チアミン","リボフラビン","ナイアシン","ピリドキシン"], 
+                correct:0,
+                explanation: "ビタミンB1（チアミン）は糖質代謝に関与する水溶性ビタミンです。ピルビン酸の代謝に必要で、欠乏すると脚気やベリベリ病を引き起こします。玄米や豚肉に多く含まれます。"
+            },
+            { 
+                question: "ビタミンB2の化学名は？", 
+                options:["リボフラビン","チアミン","ナイアシン","ピリドキシン"], 
+                correct:0,
+                explanation: "ビタミンB2（リボフラビン）は黄色の色素を持つ水溶性ビタミンです。FAD（フラビンアデニンジヌクレオチド）の構成成分として酸化還元反応に関与します。欠乏すると口角炎や皮膚炎を起こします。"
+            },
+            { 
+                question: "ビタミンB6の化学名は？", 
+                options:["ピリドキシン","チアミン","リボフラビン","ナイアシン"], 
+                correct:0,
+                explanation: "ビタミンB6（ピリドキシン）はアミノ酸代謝に重要な役割を果たす水溶性ビタミンです。アミノ基転移反応や脱炭酸反応の補酵素として働きます。タンパク質の摂取量に比例して必要量が増加します。"
+            },
+            { 
+                question: "葉酸の別名は？", 
+                options:["ビタミンB9","ビタミンB12","ビタミンK","ビタミンD"], 
+                correct:0,
+                explanation: "葉酸はビタミンB9とも呼ばれる水溶性ビタミンです。DNA合成に必要で、特に細胞分裂が盛んな組織で重要です。妊娠初期の摂取不足は神経管閉鎖障害のリスクを高めます。"
+            },
+
+            // === 炭水化物の詳細 ===
+            { 
+                question: "アルドースの例は？", 
+                options:["グルコース","フルクトース","リブロース","全て"], 
+                correct:0,
+                explanation: "アルドースはアルデヒド基を持つ単糖です。グルコース、リボース、ガラクトースなどが該当します。フルクトースはケトン基を持つケトースです。アルドースは還元糖として銀鏡反応に陽性を示します。"
+            },
+            { 
+                question: "ケトースの例は？", 
+                options:["フルクトース","グルコース","ガラクトース","リボース"], 
+                correct:0,
+                explanation: "ケトースはケトン基を持つ単糖です。フルクトース（果糖）が代表例で、分子式はC₆H₁₂O₆です。グルコースの異性体ですが、2位の炭素にケトン基があるため性質が異なります。"
+            },
+            { 
+                question: "ペントースの例は？", 
+                options:["リボース","グルコース","フルクトース","ガラクトース"], 
+                correct:0,
+                explanation: "ペントースは炭素数5の単糖です。リボース（C₅H₁₀O₅）は RNA の構成成分で、デオキシリボースは DNA の構成成分です。五炭糖は核酸の糖部分として生命現象に重要な役割を果たします。"
+            },
+            { 
+                question: "ヘキソースの例は？", 
+                options:["グルコース","リボース","エリスロース","グリセルアルデヒド"], 
+                correct:0,
+                explanation: "ヘキソースは炭素数6の単糖です。グルコース、フルクトース、ガラクトースなどがあり、分子式はC₆H₁₂O₆です。最も重要な単糖群で、エネルギー源として広く利用されます。"
+            },
+            { 
+                question: "還元糖の例は？", 
+                options:["グルコース","スクロース","デンプン","セルロース"], 
+                correct:0,
+                explanation: "還元糖は還元性を示す糖で、遊離のアルデヒド基またはケトン基を持ちます。グルコース、フルクトース、マルトース、ラクトースなどが該当し、銀鏡反応やフェーリング反応に陽性を示します。"
+            },
+            { 
+                question: "非還元糖の例は？", 
+                options:["スクロース","グルコース","フルクトース","ガラクトース"], 
+                correct:0,
+                explanation: "スクロース（ショ糖）は非還元糖です。グルコースとフルクトースがα(1→2)結合で結合し、両方の還元基が結合に関与するため還元性を示しません。砂糖の主成分です。"
+            },
+
+            // === 脂質の詳細 ===
+            { 
+                question: "飽和脂肪酸の例は？", 
+                options:["パルミチン酸","オレイン酸","リノール酸","リノレン酸"], 
+                correct:0,
+                explanation: "パルミチン酸（C₁₆H₃₂O₂）は炭素数16の飽和脂肪酸です。動物性脂肪に多く含まれ、常温で固体です。全ての炭素-炭素結合が単結合のため飽和脂肪酸と呼ばれます。"
+            },
+            { 
+                question: "不飽和脂肪酸の例は？", 
+                options:["オレイン酸","パルミチン酸","ステアリン酸","ラウリン酸"], 
+                correct:0,
+                explanation: "オレイン酸（C₁₈H₃₄O₂）は炭素数18で二重結合を1つ持つ一価不飽和脂肪酸です。オリーブオイルに多く含まれ、常温で液体です。二重結合のためヨウ素価が高くなります。"
+            },
+            { 
+                question: "必須脂肪酸の例は？", 
+                options:["リノール酸","パルミチン酸","ステアリン酸","オレイン酸"], 
+                correct:0,
+                explanation: "リノール酸（C₁₈H₃₂O₂）は二重結合を2つ持つ多価不飽和脂肪酸で、人体で合成できない必須脂肪酸です。植物油に多く含まれ、細胞膜の構成成分として重要です。"
+            },
+            { 
+                question: "コレステロールの分子式は？", 
+                options:["C₂₇H₄₆O","C₂₇H₄₄O","C₂₈H₄₈O","C₂₆H₄₄O"], 
+                correct:0,
+                explanation: "コレステロールはステロイド骨格を持つ脂質で、分子式はC₂₇H₄₆Oです。細胞膜の流動性調節や、胆汁酸、ステロイドホルモンの前駆体として重要な生理機能を持ちます。"
+            },
+            { 
+                question: "リン脂質の例は？", 
+                options:["レシチン","コレステロール","トリグリセリド","スクロース"], 
+                correct:0,
+                explanation: "レシチン（ホスファチジルコリン）は代表的なリン脂質です。グリセリンに脂肪酸2分子とリン酸コリンが結合した構造で、細胞膜の主要構成成分として働きます。両親媒性分子です。"
+            },
+
+            // === 特殊な反応・現象 ===
+            { 
+                question: "フリーデル・クラフツ反応で導入されるのは？", 
+                options:["アルキル基またはアシル基","ヒドロキシ基","アミノ基","ハロゲン"], 
+                correct:0,
+                explanation: "フリーデル・クラフツ反応は芳香族化合物にアルキル基やアシル基を導入する求電子置換反応です。AlCl₃などのルイス酸を触媒として用い、アルキル化またはアシル化を行います。"
+            },
+            { 
+                question: "ディールス・アルダー反応の生成物は？", 
+                options:["6員環化合物","5員環化合物","7員環化合物","鎖状化合物"], 
+                correct:0,
+                explanation: "ディールス・アルダー反応は共役ジエンとアルケン（ジエノフィル）が[4+2]付加環化反応により6員環を形成する反応です。協奏的に進行し、立体化学が保持される特徴があります。"
+            },
+            { 
+                question: "アルドール縮合の生成物は？", 
+                options:["α,β-不飽和カルボニル化合物","エステル","エーテル","アミド"], 
+                correct:0,
+                explanation: "アルドール縮合では、2分子のアルデヒド（またはケトン）が塩基触媒下で結合し、脱水してα,β-不飽和カルボニル化合物を生成します。最初にアルドール付加が起こり、続いて脱水反応が進行します。"
+            },
+            { 
+                question: "カニッツァーロ反応が起こるのは？", 
+                options:["α-水素のないアルデヒド","α-水素のあるアルデヒド","ケトン","エステル"], 
+                correct:0,
+                explanation: "カニッツァーロ反応は、α位に水素を持たないアルデヒド（ベンズアルデヒド、ホルムアルデヒドなど）が強塩基存在下で不均化反応を起こし、カルボン酸塩とアルコールを生成する反応です。"
+            },
+            { 
+                question: "ウォルフ・キシュナー還元で生成するのは？", 
+                options:["アルカン","アルコール","アルデヒド","ケトン"], 
+                correct:0,
+                explanation: "ウォルフ・キシュナー還元では、ケトンやアルデヒドのカルボニル基がヒドラジンと塩基の存在下でメチレン基（-CH₂-）に還元されます。クレメンゼン還元と同様にカルボニル基の完全還元法です。"
+            },
+
+            // === 天然有機化合物 ===
+            { 
+                question: "カフェインの分子式は？", 
+                options:["C₈H₁₀N₄O₂","C₈H₁₀N₂O₂","C₆H₁₂N₂O","C₁₀H₁₄N₂O"], 
+                correct:0,
+                explanation: "カフェインはプリン骨格を持つアルカロイドで、分子式はC₈H₁₀N₄O₂です。コーヒー、茶、カカオに含まれ、中枢神経興奮作用があります。アデノシン受容体を阻害することで覚醒効果を示します。"
+            },
+            { 
+                question: "ニコチンの分子式は？", 
+                options:["C₁₀H₁₄N₂","C₈H₁₀N₄O₂","C₁₁H₁₅NO₂","C₉H₁₃N"], 
+                correct:0,
+                explanation: "ニコチンはピリジン環とピロリジン環からなるアルカロイドで、分子式はC₁₀H₁₄N₂です。タバコに含まれ、神経系に作用して依存性を引き起こします。殺虫剤としても使用された歴史があります。"
+            },
+            { 
+                question: "モルヒネの分子式は？", 
+                options:["C₁₇H₁₉NO₃","C₁₆H₁₈N₂O","C₁₈H₂₁NO₄","C₁₅H₁₇NO₂"], 
+                correct:0,
+                explanation: "モルヒネはケシから抽出されるアルカロイドで、分子式はC₁₇H₁₉NO₃です。強力な鎮痛作用を持ちますが、依存性があるため医療用に限定使用されます。オピオイド受容体に作用します。"
+            },
+            { 
+                question: "キニーネの用途は？", 
+                options:["抗マラリア薬","鎮痛薬","興奮剤","催眠薬"], 
+                correct:0,
+                explanation: "キニーネはキナの樹皮から得られるアルカロイドで、抗マラリア薬として使用されます。マラリア原虫の増殖を抑制する作用があり、トニックウォーターの苦味成分としても知られています。"
+            },
+            { 
+                question: "アトロピンの作用は？", 
+                options:["副交感神経遮断","交感神経刺激","中枢神経抑制","末梢血管拡張"], 
+                correct:0,
+                explanation: "アトロピンはベラドンナから得られるアルカロイドで、副交感神経を遮断します（抗コリン作用）。瞳孔を散大させ、唾液分泌を抑制します。眼科検査や中毒の解毒剤として使用されます。"
+            },
+
+            // === 合成高分子の詳細 ===
+            { 
+                question: "テフロンの化学名は？", 
+                options:["ポリテトラフルオロエチレン","ポリエチレン","ポリプロピレン","ポリスチレン"], 
+                correct:0,
+                explanation: "テフロンの化学名はポリテトラフルオロエチレン（PTFE）で、テトラフルオロエチレン（CF₂=CF₂）が重合した高分子です。フッ素原子により化学的に非常に安定で、非粘着性を示します。"
+            },
+            { 
+                question: "PETの化学名は？", 
+                options:["ポリエチレンテレフタラート","ポリエチレン","ポリプロピレン","ポリスチレン"], 
+                correct:0,
+                explanation: "PETの化学名はポリエチレンテレフタラート（ポリエチレンテレフタレート）で、エチレングリコールとテレフタル酸の縮合重合で得られるポリエステルです。ペットボトルや繊維として広く使用されます。"
+            },
+            { 
+                question: "PCの化学名は？", 
+                options:["ポリカーボネート","ポリ塩化ビニル","ポリスチレン","ポリエチレン"], 
+                correct:0,
+                explanation: "PC（ポリカーボネート）はビスフェノールAとホスゲンまたは炭酸ジエステルから合成される透明な樹脂です。高い衝撃強度と耐熱性を持ち、光学レンズや自動車部品に使用されます。"
+            },
+            { 
+                question: "PMMAの化学名は？", 
+                options:["ポリメタクリル酸メチル","ポリエチレン","ポリプロピレン","ポリスチレン"], 
+                correct:0,
+                explanation: "PMMA（ポリメタクリル酸メチル）はメタクリル酸メチルが重合した透明な樹脂で、アクリル樹脂とも呼ばれます。優れた透明性と加工性を持ち、看板や建築材料として使用されます。"
+            },
+            { 
+                question: "熱硬化性樹脂の例は？", 
+                options:["ベークライト","ポリエチレン","ポリスチレン","ナイロン"], 
+                correct:0,
+                explanation: "ベークライト（フェノール樹脂）は熱硬化性樹脂の代表例です。加熱により架橋構造を形成して硬化し、再加熱しても軟化しません。電気絶縁性に優れ、電気部品に使用されます。"
+            },
+            { 
+                question: "熱可塑性樹脂の例は？", 
+                options:["ポリエチレン","ベークライト","エポキシ樹脂","ウレタン樹脂"], 
+                correct:0,
+                explanation: "ポリエチレンは熱可塑性樹脂の代表例です。加熱により軟化し、冷却により再び硬化する性質を持ちます。この性質により成形加工が容易で、リサイクルも可能です。"
+            },
+
+            // === 分析・測定 ===
+            { 
+                question: "IRスペクトルで観測されるのは？", 
+                options:["分子振動","電子遷移","核磁気共鳴","質量分析"], 
+                correct:0,
+                explanation: "IR（赤外分光法）では、分子の振動エネルギーに対応する赤外線の吸収を測定します。官能基特有の振動（伸縮、変角振動など）が観測され、化合物の構造決定に重要な情報を提供します。"
+            },
+            { 
+                question: "NMRスペクトルで観測されるのは？", 
+                options:["核磁気共鳴","分子振動","電子遷移","質量分析"], 
+                correct:0,
+                explanation: "NMR（核磁気共鳴分光法）では、磁場中の原子核が電磁波と共鳴する現象を観測します。¹H-NMRや¹³C-NMRにより、分子内の水素や炭素の環境を詳細に分析できます。"
+            },
+            { 
+                question: "UVスペクトルで観測されるのは？", 
+                options:["電子遷移","分子振動","核磁気共鳴","質量分析"], 
+                correct:0,
+                explanation: "UV（紫外可視分光法）では、分子の電子が基底状態から励起状態への遷移に伴う紫外・可視光の吸収を測定します。π電子系や発色団の分析に用いられます。"
+            },
+            { 
+                question: "MSで測定されるのは？", 
+                options:["分子量とフラグメント","化学シフト","吸収波長","振動周波数"], 
+                correct:0,
+                explanation: "MS（質量分析法）では、分子をイオン化して質量/電荷比を測定し、分子量や分子の断片化パターン（フラグメンテーション）を調べます。分子式の決定や構造解析に重要な手法です。"
+            },
+            { 
+                question: "¹H-NMRで積分値が表すのは？", 
+                options:["水素原子数","炭素原子数","酸素原子数","窒素原子数"], 
+                correct:0,
+                explanation: "¹H-NMRの積分値は、各シグナルに対応する水素原子の相対的な数を表します。シグナルの面積が水素原子数に比例するため、分子内の水素原子の数的関係を知ることができます。"
+            },
+
+            // === 環境・エネルギー ===
+            { 
+                question: "バイオディーゼル燃料の原料は？", 
+                options:["植物油","石油","天然ガス","石炭"], 
+                correct:0,
+                explanation: "バイオディーゼル燃料は植物油（大豆油、菜種油など）や廃食用油をメチルエステル化して製造される再生可能燃料です。二酸化炭素の排出が植物の成長時の吸収とバランスするため、カーボンニュートラルとされます。"
+            },
+            { 
+                question: "バイオエタノールの原料は？", 
+                options:["糖質・デンプン","セルロース","石油","天然ガス"], 
+                correct:0,
+                explanation: "バイオエタノールは糖質（サトウキビ、テンサイ）やデンプン（トウモロコシ、小麦）を発酵させて製造される再生可能燃料です。ガソリンに混合して使用され、温室効果ガスの削減に貢献します。"
+            },
+            { 
+                question: "生分解性プラスチックの例は？", 
+                options:["ポリ乳酸","ポリエチレン","ポリスチレン","PVC"], 
+                correct:0,
+                explanation: "ポリ乳酸（PLA）は乳酸が重合した生分解性プラスチックです。微生物により分解され、最終的に二酸化炭素と水になります。包装材料や農業用フィルムとして使用され、環境負荷が小さい特徴があります。"
+            },
+            { 
+                question: "オゾン層破壊物質の例は？", 
+                options:["フロンガス","二酸化炭素","水蒸気","酸素"], 
+                correct:0,
+                explanation: "フロンガス（CFC、HCFC など）は強力なオゾン層破壊物質です。成層圏で紫外線により分解されて塩素ラジカルを生成し、オゾンを連鎖的に分解します。モントリオール議定書により使用が規制されています。"
+            },
+            { 
+                question: "温室効果ガスでないのは？", 
+                options:["酸素","二酸化炭素","メタン","亜酸化窒素"], 
+                correct:0,
+                explanation: "酸素（O₂）は温室効果ガスではありません。温室効果ガスは赤外線を吸収する分子で、二酸化炭素（CO₂）、メタン（CH₄）、亜酸化窒素（N₂O）などがあります。酸素は対称分子のため赤外線を吸収しません。"
+            }
+        ];
+        // 問題のコピーを保持
+        const masterQuizzes = chemQuizzes.map(q=>({ question:q.question, options: q.options.slice(), correct: q.correct }));
+
+        // enemy compounds
+        const enemyCompounds = [
+            {formula:"CH4", name:"メタン"},
+            {formula:"C2H6", name:"エタン"},
+            {formula:"C3H8", name:"プロパン"},
+            {formula:"C4H10", name:"ブタン"},
+            {formula:"C5H12", name:"ペンタン"},
+            {formula:"C2H4", name:"エチレン"},
+            {formula:"C3H6", name:"プロピレン"},
+            {formula:"C4H8", name:"ブテン"},
+            {formula:"C6H6", name:"ベンゼン"},
+            {formula:"C7H8", name:"トルエン"},
+            {formula:"C8H10", name:"キシレン"},
+            {formula:"CH3OH", name:"メタノール"},
+            {formula:"C2H5OH", name:"エタノール"},
+            {formula:"C3H7OH", name:"プロパノール"},
+            {formula:"HCHO", name:"ホルムアルデヒド"},
+            {formula:"CH3CHO", name:"アセトアルデヒド"},
+            {formula:"C2H5CHO", name:"プロピオンアルデヒド"},
+            {formula:"HCOOH", name:"ギ酸"},
+            {formula:"CH3COOH", name:"酢酸"},
+            {formula:"C2H5COOH", name:"プロピオン酸"},
+            {formula:"CH3NH2", name:"メチルアミン"},
+            {formula:"C2H5NH2", name:"エチルアミン"},
+            {formula:"(CH3)2NH", name:"ジメチルアミン"},
+            {formula:"C6H12O6", name:"グルコース"},
+            {formula:"C12H22O11", name:"スクロース"},
+            {formula:"C5H10O5", name:"リボース"}
+        ];
+
+        // shooting
+        let lastShotTime = 0, shotInterval = 150;
+        function shootPlayerBullet(){ if(gameState!=='playing') return; const now=Date.now(); if(now-lastShotTime<shotInterval) return; lastShotTime=now; const spread = 1.3/180*Math.PI; const angles = [-spread,0,spread]; angles.forEach(a=> playerBullets.push({ x: player.x + player.width/2, y: player.y - 10, width:3, height:6, speed:12, angle: a })); }
+
+        // bomb with flash effect and cooldown (改良版フラッシュ)
+        let bombFlashTimer = 0;
+        let bombFlashAlpha = 0;
+        
+        function useBomb(){ 
+            if(gameState!=='playing' || player.bombs<=0) return; 
+            const now = Date.now();
+            if(now - lastBombTime < 5000) return;
+            
+            lastBombTime = now;
+            player.bombs--; 
+            
+            enemyBullets=[]; 
+            lasers=[];
+            
+            // 改良されたフラッシュエフェクト
+            bombFlashTimer = 0;
+            bombFlashAlpha = 0.7; // 初期透明度
+        }
+
+        // フラッシュエフェクトの更新
+        function updateFlashEffect() {
+            if(bombFlashAlpha > 0) {
+                bombFlash.style.background = `rgba(255,255,255,${bombFlashAlpha})`;
+                bombFlash.style.opacity = '1';
+                bombFlashTimer++;
+                
+                // 滑らかに透明度を下げる（3分の1の時間で）
+                if(bombFlashTimer <= 20) { // 約0.2秒でフェードアウト
+                    bombFlashAlpha -= 0.035; // 滑らかに減少
+                } else {
+                    bombFlashAlpha = 0;
+                    bombFlash.style.background = 'transparent';
+                    bombFlash.style.opacity = '0';
+                }
+            }
+        }
+
+        // spawn enemy
+        function spawnEnemy(){ 
+            if(boss || score>=3000) return; 
+            const idx = Math.floor(Math.random()*enemyCompounds.length); 
+            const comp = enemyCompounds[idx]; 
+            const mw = Math.max(1, Math.round(parseFormula(comp.formula))); 
+            const diffSettings = getDifficultySettings();
+            const hpMultiplier = diffSettings.enemyHpMultiplier || 1.0;
+            const hp = Math.max(20, Math.round(mw*1.2*hpMultiplier)); 
+            enemies.push({ 
+                x: Math.random()*(canvas.width-80), 
+                y:-80, 
+                width:60, 
+                height:60, 
+                hp:hp, 
+                baseHp:hp, 
+                scoreValue:200,
+                speed:1.6 + Math.random()*1.6, 
+                shootTimer:0, 
+                compound:comp.formula, 
+                name:comp.name, 
+                movePattern: Math.floor(Math.random()*3), 
+                patternTimer:0 
+            }); 
+        }
+
+        // spawn boss (修正版：形態システム改善)
+        function spawnBoss(){ 
+            const diffSettings = getDifficultySettings();
+            // 各形態の体力を統一（1形態1体力バー）
+            const phaseHp = difficulty === 'easy' ? 1400 : (difficulty === 'hard' ? 1800 : (difficulty === 'academic' ? 2200 : 1600));
+            boss = { 
+                cx: canvas.width/2, 
+                cy: 160, 
+                size: 140, 
+                hp: phaseHp, 
+                maxHp: phaseHp, // 各形態の最大体力
+                phase: 0, // 第1形態から開始
+                maxPhase: diffSettings.bossMaxPhase, 
+                shootTimer: 0, 
+                enraged: false, 
+                spiralCooldown: 0,
+                machineGunAngle: 0,
+                machineGunAngle2: Math.PI,
+                machineGunTimer: 0 // マシンガン用タイマー
+            }; 
+            waitingForNextQuiz = true; 
+            nextQuizTimer = 0; 
+        }
+
+        // spawn quiz wall
+        function spawnQuizWall(){
+            if(!boss || currentQuizWall || showingAnnouncement) return;
+            if(chemQuizzes.length === 0) chemQuizzes.push(...masterQuizzes.map(q=>({ question:q.question, options:q.options.slice(), correct:q.correct })));
+            const idx = Math.floor(Math.random() * chemQuizzes.length);
+            const quiz = chemQuizzes.splice(idx,1)[0];
+            if(!quiz) return;
+            currentQuizWall = quiz;
+            
+            const correctAnswer = quiz.options[quiz.correct];
+            const allOptions = quiz.options.slice();
+            const selectedOptions = [correctAnswer];
+            
+            const wrongOptions = allOptions.filter((_, idx) => idx !== quiz.correct);
+            while(selectedOptions.length < 4 && wrongOptions.length > 0) {
+                const randomIdx = Math.floor(Math.random() * wrongOptions.length);
+                selectedOptions.push(wrongOptions.splice(randomIdx, 1)[0]);
+            }
+            
+            shuffleArray(selectedOptions);
+            
+            const spacing = (canvas.width - 100) / 4;
+            selectedOptions.forEach((option, i) => {
+                quizWalls.push({ 
+                    x: 50 + i * spacing + 10, 
+                    y: 200, 
+                    width: spacing - 20, 
+                    height: 60, 
+                    hp: 100, 
+                    text: option, 
+                    isCorrect: option === correctAnswer 
+                });
+            });
+            bossInvulnerable = true;
+        }
+
+        // bullet creator with difficulty scaling
+        function createEnemyBullet(x,y,type,extra={}){
+            const diffSettings = getDifficultySettings();
+            const b = Object.assign({ x:x, y:y, width:6, height:6, type:type }, extra);
+            switch(type){
+                case 'straight':
+                    b.speed = (b.speed || (2 + Math.random()*1.5)) * Math.sqrt(diffSettings.bulletMultiplier);
+                    if(b.vx === undefined || b.vy === undefined){ b.vx = b.vx !== undefined ? b.vx : 0; b.vy = b.vy !== undefined ? b.vy : b.speed; }
+                    break;
+                case 'homing':{
+                    const dx = player.x - x, dy = player.y - y, d = Math.sqrt(dx*dx + dy*dy) || 1; 
+                    b.speed = (b.speed || 1.6) * Math.sqrt(diffSettings.bulletMultiplier); 
+                    b.vx = (dx/d)*b.speed; b.vy = (dy/d)*b.speed; }
+                    break;
+                case 'curving':
+                    b.speed = (extra.speed || 2) * Math.sqrt(diffSettings.bulletMultiplier);
+                    b.angle = extra.angle !== undefined ? extra.angle : (extra.baseAngle !== undefined ? extra.baseAngle : (Math.random()*Math.PI*2));
+                    b.turnRate = extra.turnRate !== undefined ? extra.turnRate : (Math.random()*0.002 - 0.001);
+                    b.vx = Math.cos(b.angle) * b.speed; b.vy = Math.sin(b.angle) * b.speed;
+                    break;
+                case 'spiralV2':
+                    b.centerX = extra.centerX || x; b.centerY = extra.centerY || y; b.angle = extra.angle || 0; b.radius = extra.radius || (extra.baseRadius || 12); 
+                    b.angularSpeed = (extra.angularSpeed || 0.005) * diffSettings.bulletMultiplier; 
+                    b.radialSpeed = (extra.radialSpeed || 0.12) * Math.sqrt(diffSettings.bulletMultiplier); 
+                    b.offsetY = extra.offsetY || 0; break;
+                case 'bigBurst':
+                    b.width = 12; b.height = 12; 
+                    b.life = extra.life || 200; 
+                    b.speed = (extra.speed || 2.5) * Math.sqrt(diffSettings.bulletMultiplier);
+                    b.vx = extra.vx || 0; 
+                    b.vy = extra.vy || 0;
+                    b.phase = extra.phase || 'moving';
+                    b.waitTimer = 0;
+                    break;
+                case 'smallBurst':
+                    b.width = 6; b.height = 6;
+                    b.life = extra.life || 150;
+                    b.speed = (extra.speed || 2.0) * Math.sqrt(diffSettings.bulletMultiplier);
+                    b.vx = extra.vx || 0; 
+                    b.vy = extra.vy || 0;
+                    b.phase = extra.phase || 'moving';
+                    b.waitTimer = 0;
+                    break;
+                case 'grazeBullet':
+                    const px = player.x + player.width/2, py = player.y + player.height/2;
+                    const dx = px - x, dy = py - y, dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                    const grazeOffset = 25;
+                    const targetX = px + (Math.random() - 0.5) * grazeOffset * 2;
+                    const targetY = py + (Math.random() - 0.5) * grazeOffset * 2;
+                    const tdx = targetX - x, tdy = targetY - y, tdist = Math.sqrt(tdx*tdx + tdy*tdy) || 1;
+                    b.speed = (extra.speed || 2.5) * Math.sqrt(diffSettings.bulletMultiplier); 
+                    b.vx = (tdx/tdist) * b.speed; b.vy = (tdy/tdist) * b.speed;
+                    break;
+                case 'machineGunWave':
+                    b.speed = (extra.speed || 3.0) * Math.sqrt(diffSettings.bulletMultiplier);
+                    b.vx = extra.vx || 0;
+                    b.vy = extra.vy || 0;
+                    break;
+                case 'magicCircle':
+                    b.speed = (extra.speed || 1.5) * Math.sqrt(diffSettings.bulletMultiplier);
+                    b.vx = extra.vx || 0;
+                    b.vy = extra.vy || 0;
+                    b.width = 8; b.height = 8;
+                    break;
+                case 'petalBullet':
+                    b.speed = (extra.speed || 1.2) * Math.sqrt(diffSettings.bulletMultiplier);
+                    b.angle = extra.angle || 0;
+                    b.turnRate = extra.turnRate || 0;
+                    b.vx = extra.vx || 0;
+                    b.vy = extra.vy || 0;
+                    b.width = 6; b.height = 6;
+                    break;
+                default:
+                    b.vx = b.vx || 0; b.vy = b.vy || 2; break;
+            }
+            enemyBullets.push(b);
+        }
+
+        // lasers
+        function createLaser(x,y,angle,opts={}){
+            const length = Math.max(canvas.width, canvas.height) * 1.5;
+            const laser = { 
+                x:x, y:y, angle:angle, length:length, width:opts.width||2, 
+                chargeTime:opts.chargeTime||60, activeTime:opts.activeTime||30, 
+                fadeTime:opts.fadeTime||20,
+                timer:0, alpha:0
+            };
+            if(opts.previewSpin){ laser.previewSpin = opts.previewSpin; laser.previewDecel = opts.previewDecel || 0.98; }
+            if(opts.targetPlayer) {
+                const dx = player.x + player.width/2 - x;
+                const dy = player.y + player.height/2 - y;
+                laser.targetAngle = Math.atan2(dy, dx);
+                laser.angle = laser.targetAngle;
+            }
+            lasers.push(laser);
+        }
+
+        // curving bullets with difficulty scaling
+        function createCurvingBullets(x,y,count=10, larger=false){
+            const diffSettings = getDifficultySettings();
+            const adjustedCount = Math.max(3, Math.round(count * diffSettings.bulletMultiplier));
+            
+            for(let i=0;i<adjustedCount;i++){
+                const a = Math.random()*Math.PI*2;
+                const baseTurn = 0.001 + Math.random()*0.0015;
+                const turnRate = (i % 2 === 0) ? baseTurn : -baseTurn;
+                const speed = (larger ? (1.8 + Math.random()*0.6) : 1.6 + Math.random()*0.4) * Math.sqrt(diffSettings.bulletMultiplier);
+                createEnemyBullet(x,y,'curving',{ angle: a, speed: speed, turnRate: turnRate });
+            }
+        }
+
+        // circular emission with difficulty scaling (初期角度修正)
+        function createCircularBurst(x,y,count=12, speed=2.2, startAngle=0){
+            const diffSettings = getDifficultySettings();
+            const adjustedCount = Math.max(3, Math.round(count * diffSettings.bulletMultiplier));
+            const adjustedSpeed = speed * Math.sqrt(diffSettings.bulletMultiplier);
+            
+            for(let i=0;i<adjustedCount;i++){
+                const angle = startAngle + (i / adjustedCount) * Math.PI * 2;
+                createEnemyBullet(x + Math.cos(angle)*6, y + Math.sin(angle)*6, 'straight', { vx: Math.cos(angle)*adjustedSpeed, vy: Math.sin(angle)*adjustedSpeed });
+            }
+            circularBurstBaseAngle += (5 * Math.PI / 180);
+        }
+
+        // circular burst for small bullets
+        function createSmallBurstCircular(x, y, count=6, speed=2.0) {
+            const diffSettings = getDifficultySettings();
+            const adjustedCount = Math.max(3, Math.round(count * diffSettings.bulletMultiplier));
+            const adjustedSpeed = speed * Math.sqrt(diffSettings.bulletMultiplier);
+            
+            for(let i = 0; i < adjustedCount; i++) {
+                const angle = (i / adjustedCount) * Math.PI * 2;
+                createEnemyBullet(x, y, 'smallBurst', {
+                    vx: Math.cos(angle) * adjustedSpeed,
+                    vy: Math.sin(angle) * adjustedSpeed,
+                    speed: adjustedSpeed,
+                    life: 150,
+                    phase: 'moving'
+                });
+            }
+        }
+
+        // パーティクルエフェクトシステム
+        function createParticle(x, y, type, options = {}) {
+            const particle = {
+                x: x,
+                y: y,
+                type: type,
+                life: options.life || 60,
+                maxLife: options.life || 60,
+                vx: options.vx || (Math.random() - 0.5) * 4,
+                vy: options.vy || (Math.random() - 0.5) * 4,
+                size: options.size || 3,
+                color: options.color || '#fff', // 常に白色で統一
+                alpha: options.alpha || 1.0,
+                gravity: options.gravity || 0,
+                fade: options.fade !== undefined ? options.fade : true
+            };
+            particles.push(particle);
+        }
+        
+        // 雑魚敵撃破時のエフェクト（小さめ）
+        function createEnemyDeathEffect(x, y) {
+            for(let i = 0; i < 8; i++) {
+                createParticle(x, y, 'spark', {
+                    life: 30,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    size: 2,
+                    gravity: 0.1,
+                    color: '#aaa'
+                });
+            }
+        }
+        
+        // ボス形態変化時のエフェクト（大きめ）
+        function createBossPhaseChangeEffect(x, y) {
+            // 大きな爆発パーティクル
+            for(let i = 0; i < 20; i++) {
+                const angle = (i / 20) * Math.PI * 2;
+                createParticle(x, y, 'explosion', {
+                    life: 80,
+                    vx: Math.cos(angle) * (3 + Math.random() * 4),
+                    vy: Math.sin(angle) * (3 + Math.random() * 4),
+                    size: 4 + Math.random() * 3,
+                    color: '#fff',
+                    gravity: -0.05
+                });
+            }
+            
+            // 内側のキラキラ
+            for(let i = 0; i < 15; i++) {
+                createParticle(x, y, 'sparkle', {
+                    life: 100,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    size: 2,
+                    color: '#ccc',
+                    gravity: 0
+                });
+            }
+        }
+        
+        // ボス撃破時のエフェクト（最大）
+        function createBossDeathEffect(x, y) {
+            // 大爆発
+            for(let i = 0; i < 40; i++) {
+                const angle = (i / 40) * Math.PI * 2;
+                const speed = 2 + Math.random() * 6;
+                createParticle(x, y, 'bigExplosion', {
+                    life: 120,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: 6 + Math.random() * 4,
+                    color: '#fff',
+                    gravity: -0.02
+                });
+            }
+            
+            // 放射状のキラキラ
+            for(let i = 0; i < 30; i++) {
+                createParticle(x, y, 'finalSparkle', {
+                    life: 150,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() - 0.5) * 12,
+                    size: 1 + Math.random() * 2,
+                    color: '#ddd',
+                    gravity: 0.02
+                });
+            }
+        }
+        
+        // パーティクル更新
+        function updateParticles() {
+            particles.forEach((p, i) => {
+                p.life--;
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += p.gravity;
+                
+                if(p.fade) {
+                    p.alpha = p.life / p.maxLife;
+                }
+                
+                // 画面外や寿命切れで削除
+                if(p.life <= 0 || p.y > canvas.height + 50 || p.x < -50 || p.x > canvas.width + 50) {
+                    particles.splice(i, 1);
+                }
+            });
+        }
+        
+        // パーティクル描画
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                
+                // 色反転モード対応：白いパーティクルは黒に、グレー系も対応
+                let drawColor = p.color;
+                if(isInvertedMode) {
+                    if(p.color === '#fff') drawColor = '#000';
+                    else if(p.color === '#ccc') drawColor = '#333';
+                    else if(p.color === '#aaa') drawColor = '#666';
+                    else if(p.color === '#ddd') drawColor = '#444';
+                    else drawColor = p.color; // その他の色はそのまま
+                }
+                
+                ctx.fillStyle = drawColor;
+                
+                switch(p.type) {
+                    case 'spark':
+                    case 'explosion':
+                    case 'bigExplosion':
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                    case 'sparkle':
+                    case 'finalSparkle':
+                        // キラキラは十字形
+                        ctx.beginPath();
+                        ctx.moveTo(p.x - p.size, p.y);
+                        ctx.lineTo(p.x + p.size, p.y);
+                        ctx.moveTo(p.x, p.y - p.size);
+                        ctx.lineTo(p.x, p.y + p.size);
+                        ctx.lineWidth = 1;
+                        ctx.strokeStyle = drawColor;
+                        ctx.stroke();
+                        break;
+                }
+                
+                ctx.restore();
+            });
+        }
+        // 魔法陣パターン（第6形態専用の最高難易度攻撃）- 改良版
+        function createMagicCirclePattern(centerX, centerY) {
+            const diffSettings = getDifficultySettings();
+            
+            // メインの回転マシンガン弾幕（美しい螺旋状に発射）
+            const mainAngles = 8; // 8方向のマシンガン
+            const rotationSpeed = gameTime * 0.03; // 回転速度
+            
+            for(let i = 0; i < mainAngles; i++) {
+                const baseAngle = (i / mainAngles) * Math.PI * 2 + rotationSpeed;
+                
+                // 各方向から3連射（速度をずらして美しく）
+                const speeds = [1.2, 1.6, 2.0]; // 速度差で美しい軌跡
+                speeds.forEach((speed, speedIndex) => {
+                    const adjustedSpeed = speed * Math.sqrt(diffSettings.bulletMultiplier);
+                    const angleOffset = (speedIndex - 1) * 0.05; // わずかな角度差
+                    const finalAngle = baseAngle + angleOffset;
+                    
+                    createEnemyBullet(centerX, centerY, 'magicCircle', {
+                        vx: Math.cos(finalAngle) * adjustedSpeed,
+                        vy: Math.sin(finalAngle) * adjustedSpeed,
+                        speed: adjustedSpeed,
+                        curveTimer: 0,
+                        curveStrength: 0.001 * (speedIndex + 1), // 途中で曲がる強さ
+                        initialAngle: finalAngle
+                    });
+                });
+            }
+            
+            // 美しい花弁パターン（外側）
+            const petalCount = 12;
+            const petalRotation = gameTime * 0.02;
+            
+            for(let i = 0; i < petalCount; i++) {
+                const petalAngle = (i / petalCount) * Math.PI * 2 + petalRotation;
+                const waveOffset = Math.sin(petalAngle * 3 + gameTime * 0.05) * 0.3; // 波状の変化
+                const finalPetalAngle = petalAngle + waveOffset;
+                
+                // 花弁状の弾を異なる速度で発射
+                const petalSpeeds = [0.8, 1.1, 1.4];
+                petalSpeeds.forEach((speed, idx) => {
+                    const adjustedSpeed = speed * Math.sqrt(diffSettings.bulletMultiplier);
+                    createEnemyBullet(centerX, centerY, 'petalBullet', {
+                        angle: finalPetalAngle,
+                        speed: adjustedSpeed,
+                        turnRate: Math.sin(gameTime * 0.01 + idx) * 0.0015, // 動的な曲がり
+                        vx: Math.cos(finalPetalAngle) * adjustedSpeed,
+                        vy: Math.sin(finalPetalAngle) * adjustedSpeed,
+                        phaseShift: idx * 0.1
+                    });
+                });
+            }
+            
+            // 内側の高速回転弾（プレイヤーを追尾する要素）
+            const innerCount = 6;
+            const innerRotation = -gameTime * 0.08; // 逆回転で高速
+            
+            for(let i = 0; i < innerCount; i++) {
+                const innerAngle = (i / innerCount) * Math.PI * 2 + innerRotation;
+                const innerSpeed = 2.5 * Math.sqrt(diffSettings.bulletMultiplier);
+                
+                createEnemyBullet(centerX, centerY, 'spiralV2', {
+                    centerX: centerX,
+                    centerY: centerY,
+                    angle: innerAngle,
+                    radius: 15,
+                    angularSpeed: 0.01 * (i % 2 === 0 ? 1 : -1), // 交互に回転方向
+                    radialSpeed: 0.8 + (i * 0.1),
+                    offsetY: Math.sin(gameTime * 0.02 + i) * 5 // 上下振動
+                });
+            }
+        }
+
+        // マシンガンウェーブ攻撃（第5形態用）
+        function createMachineGunWave(centerX, centerY) {
+            if(!boss) return;
+            
+            // 2つの対称なマシンガン
+            for(let i = 0; i < 2; i++) {
+                const baseAngle = i === 0 ? boss.machineGunAngle : boss.machineGunAngle2;
+                
+                // マシンガン式連射（5発）
+                for(let burst = 0; burst < 5; burst++) {
+                    setTimeout(() => {
+                        if(!boss) return;
+                        const angle = baseAngle + (burst * 0.02);
+                        const speed = 4.0;
+                        createEnemyBullet(centerX, centerY, 'machineGunWave', {
+                            vx: Math.cos(angle) * speed,
+                            vy: Math.sin(angle) * speed,
+                            speed: speed
+                        });
+                    }, burst * 50);
+                }
+            }
+            
+            // 角度を更新（滑らかに回転）
+            boss.machineGunAngle += 0.08;
+            boss.machineGunAngle2 -= 0.08;
+        }
+
+        // update
+        function update(){
+            if(gameState === 'start'){
+                if(benzeneParticles.length < 18 && Math.random() < 0.06) spawnBenzeneParticle();
+                benzeneParticles.forEach((p,i)=>{ p.y -= p.speed; p.angle += 0.01; p.life--; p.alpha = Math.min(1, p.alpha + 0.01); if(p.life <= 0 || p.y < -p.size) benzeneParticles.splice(i,1); });
+                return;
+            }
+
+            if(gameState !== 'playing') return;
+
+            gameTime++;
+            if(keys['z']||keys['Z']) shootPlayerBullet(); 
+            if(keys['x']||keys['X']) useBomb();
+            const currentSpeed = keys['Shift'] ? player.slowSpeed : player.speed;
+            if(keys['ArrowLeft'] && player.x > 0) player.x -= currentSpeed;
+            if(keys['ArrowRight'] && player.x < canvas.width - player.width) player.x += currentSpeed;
+            if(keys['ArrowUp'] && player.y > 0) player.y -= currentSpeed;
+            if(keys['ArrowDown'] && player.y < canvas.height - player.height) player.y += currentSpeed;
+            if(player.invulnerable > 0) player.invulnerable--;
+
+            // player bullets movement
+            playerBullets.forEach((b,i)=>{
+                if(b.angle !== undefined){ b.x += Math.sin(b.angle) * b.speed; b.y += -Math.cos(b.angle) * b.speed; }
+                else if(b.vx !== undefined){ b.x += b.vx; b.y += b.vy; }
+                else b.y -= b.speed;
+                if(b.y < -20 || b.x < -40 || b.x > canvas.width + 40) playerBullets.splice(i,1);
+            });
+
+            // enemy bullets
+            enemyBullets.forEach((b,i)=>{
+                switch(b.type){
+                    case 'straight': b.x += b.vx; b.y += b.vy; break;
+                    case 'homing': b.x += b.vx; b.y += b.vy; break;
+                    case 'curving':
+                        b.angle += b.turnRate || 0;
+                        b.vx = Math.cos(b.angle) * b.speed; b.vy = Math.sin(b.angle) * b.speed;
+                        b.x += b.vx; b.y += b.vy;
+                        break;
+                    case 'spiralV2':
+                        b.angle += b.angularSpeed || 0;
+                        b.radius += b.radialSpeed || 0;
+                        b.x = b.centerX + Math.cos(b.angle) * b.radius;
+                        b.y = b.centerY + Math.sin(b.angle) * b.radius + b.offsetY;
+                        break;
+                    case 'bigBurst':
+                        b.life--;
+                        switch(b.phase) {
+                            case 'moving':
+                                b.x += b.vx; b.y += b.vy;
+                                if(b.life <= 150) { 
+                                    b.phase = 'decelerating';
+                                }
+                                break;
+                            case 'decelerating':
+                                b.vx *= 0.95;
+                                b.vy *= 0.95;
+                                b.x += b.vx; b.y += b.vy;
+                                if(Math.abs(b.vx) < 0.1 && Math.abs(b.vy) < 0.1) {
+                                    b.phase = 'waiting';
+                                    b.waitTimer = 9;
+                                    b.vx = 0; b.vy = 0;
+                                }
+                                break;
+                            case 'waiting':
+                                b.waitTimer--;
+                                if(b.waitTimer <= 0) {
+                                    b.phase = 'exploding';
+                                }
+                                break;
+                            case 'exploding':
+                                createSmallBurstCircular(b.x, b.y, 6, 2.0);
+                                enemyBullets.splice(i, 1);
+                                return;
+                        }
+                        break;
+                    case 'smallBurst':
+                        b.life--;
+                        switch(b.phase) {
+                            case 'moving':
+                                b.x += b.vx; b.y += b.vy;
+                                if(b.life <= 100) {
+                                    b.phase = 'decelerating';
+                                }
+                                break;
+                            case 'decelerating':
+                                b.vx *= 0.93;
+                                b.vy *= 0.93;
+                                b.x += b.vx; b.y += b.vy;
+                                if(Math.abs(b.vx) < 0.1 && Math.abs(b.vy) < 0.1) {
+                                    b.phase = 'waiting';
+                                    b.waitTimer = 9;
+                                    b.vx = 0; b.vy = 0;
+                                }
+                                break;
+                            case 'waiting':
+                                b.waitTimer--;
+                                if(b.waitTimer <= 0) {
+                                    b.phase = 'homing';
+                                    const dx = player.x + player.width/2 - b.x;
+                                    const dy = player.y + player.height/2 - b.y;
+                                    const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                                    const homingSpeed = 8;
+                                    b.vx = (dx/dist) * homingSpeed;
+                                    b.vy = (dy/dist) * homingSpeed;
+                                }
+                                break;
+                            case 'homing':
+                                b.x += b.vx; b.y += b.vy;
+                                break;
+                        }
+                        break;
+                    case 'grazeBullet':
+                        b.x += b.vx; b.y += b.vy;
+                        break;
+                    case 'machineGunWave':
+                        b.x += b.vx; b.y += b.vy;
+                        break;
+                    case 'petalBullet':
+                        b.angle += b.turnRate || 0;
+                        b.vx = Math.cos(b.angle) * b.speed; 
+                        b.vy = Math.sin(b.angle) * b.speed;
+                        b.x += b.vx; b.y += b.vy;
+                        break;
+                    default: if(b.vx !== undefined && b.vy !== undefined){ b.x += b.vx; b.y += b.vy; } break;
+                }
+                if(b.y > canvas.height + 200 || b.x < -400 || b.x > canvas.width + 400) enemyBullets.splice(i,1);
+            });
+
+            // lasers update
+            lasers.forEach((l,i)=>{
+                l.timer++;
+                
+                if(l.timer <= l.fadeTime) {
+                    l.alpha = l.timer / l.fadeTime;
+                } else if(l.timer <= l.chargeTime) {
+                    l.alpha = 0.3;
+                } else if(l.timer <= l.chargeTime + l.fadeTime) {
+                    const fadeProgress = (l.timer - l.chargeTime) / l.fadeTime;
+                    l.alpha = 0.3 + (0.7 * fadeProgress);
+                } else if(l.timer <= l.chargeTime + l.activeTime) {
+                    l.alpha = 1.0;
+                } else if(l.timer <= l.chargeTime + l.activeTime + l.fadeTime) {
+                    const fadeProgress = (l.timer - l.chargeTime - l.activeTime) / l.fadeTime;
+                    l.alpha = 1.0 - fadeProgress;
+                } else {
+                    lasers.splice(i,1);
+                    return;
+                }
+                
+                if(l.timer <= l.chargeTime){
+                    if(l.previewSpin){ 
+                        l.angle += l.previewSpin; 
+                        l.previewSpin *= l.previewDecel; 
+                    }
+                    if(l.targetPlayer && l.timer < l.chargeTime * 0.8) {
+                        const dx = player.x + player.width/2 - l.x;
+                        const dy = player.y + player.height/2 - l.y;
+                        l.targetAngle = Math.atan2(dy, dx);
+                        const angleDiff = l.targetAngle - l.angle;
+                        const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+                        l.angle += normalizedDiff * 0.05;
+                    }
+                }
+            });
+
+            // enemies (難易度に応じた攻撃頻度調整)
+            enemies.forEach((e,ei)=>{
+                const diffSettings = getDifficultySettings();
+                
+                e.patternTimer++;
+                switch(e.movePattern){
+                    case 0:
+                        e.y += e.speed;
+                        break;
+                    case 1:
+                        e.y += e.speed * 0.7;
+                        e.x += Math.sin(e.patternTimer * 0.05) * 2;
+                        break;
+                    case 2:
+                        e.y += e.speed * 0.5;
+                        e.x += Math.cos(e.patternTimer * 0.03) * 3;
+                        break;
+                }
+                
+                e.shootTimer = (e.shootTimer||0) + 1;
+                const baseShootInterval = 80;
+                const adjustedInterval = Math.round(baseShootInterval / diffSettings.attackCooldownMultiplier);
+                
+                if(e.shootTimer > adjustedInterval){ 
+                    e.shootTimer = 0; 
+                    const rand = Math.random();
+                    const bigBurstChance = difficulty === 'hard' ? 0.15 : (difficulty === 'easy' ? 0.05 : (difficulty === 'academic' ? 0.25 : 0.1));
+                    
+                    if(rand < bigBurstChance) {
+                        createEnemyBullet(e.x + e.width/2, e.y + e.height, 'bigBurst', {
+                            vx: 0, vy: 2, life: 200, phase: 'moving'
+                        });
+                    } else {
+                        const types=['straight','homing','circular'];
+                        const t = types[Math.floor(Math.random()*types.length)]; 
+                        if(t === 'circular') {
+                            const count = difficulty === 'hard' ? 12 : (difficulty === 'easy' ? 5 : (difficulty === 'academic' ? 15 : 8));
+                            const speed = difficulty === 'hard' ? 2.2 : (difficulty === 'easy' ? 1.4 : (difficulty === 'academic' ? 2.6 : 1.8));
+                            createCircularBurst(e.x + e.width/2, e.y + e.height, count, speed); 
+                        } else {
+                            createEnemyBullet(e.x+e.width/2, e.y+e.height, t); 
+                        }
+                    }
+                }
+                e.x = Math.max(0, Math.min(canvas.width - e.width, e.x));
+                if(e.y > canvas.height) enemies.splice(ei,1);
+            });
+
+        // boss spawn trigger (ボス登場時のフラッシュ追加)
+            if(!boss && !bossWarningActive && (score >= 3000 || debugMode) && enemies.length === 0){
+                bossWarningActive = true;
+                bossWarningTimer = 0;
+                fadeOutAudio(bgmStage, 2000, () => {
+                    // Academic難易度の場合は専用BGMを再生
+                    if(difficulty === 'academic') {
+                        bgmAcademicBoss.play();
+                    } else {
+                        bgmBoss.play();
+                    }
+                });
+            }
+
+            // boss warning timer (ボス登場時の弾消去とフラッシュ)
+            if(bossWarningActive && !boss){ 
+                bossWarningTimer++; 
+                if(bossWarningTimer > 120){ 
+                    bossWarningActive = false; 
+                    
+                    // ボス登場時の弾消去と軽いフラッシュエフェクト
+                    enemyBullets = [];
+                    lasers = [];
+                    
+                    bombFlashTimer = 0;
+                    bombFlashAlpha = 0.15; // かなり弱めのフラッシュ
+                    
+                    spawnBoss(); 
+                } 
+            }
+
+            // boss logic with difficulty scaling
+            if(boss){
+                const diffSettings = getDifficultySettings();
+                
+                if(debugMode && gameTime % 60 === 0) {
+                    boss.hp -= 50;
+                }
+                
+                boss.shootTimer++;
+                if(boss.spiralCooldown > 0) boss.spiralCooldown--;
+                if(bossEnrageTime > 0){ bossEnrageTime--; boss.enraged = true; } else boss.enraged = false;
+                if(waitingForNextQuiz){ nextQuizTimer++; if(nextQuizTimer > diffSettings.quizCooldown){ waitingForNextQuiz = false; showingAnnouncement = true; quizAnnounceTimer = 0; } }
+                if(showingAnnouncement){ quizAnnounceTimer++; if(quizAnnounceTimer > 120){ showingAnnouncement = false; quizAnnounceTimer = 0; spawnQuizWall(); } }
+
+                // 第2、3形態での規則的円形バラマキ弾
+                const circularInterval = Math.round(180 / diffSettings.attackCooldownMultiplier);
+                if(boss.phase >= 1 && boss.shootTimer % circularInterval === 0) {
+                    createCircularBurst(boss.cx, boss.cy, 16, 1.8);
+                }
+                if(boss.phase >= 2 && boss.shootTimer % Math.round(240 / diffSettings.attackCooldownMultiplier) === 0) {
+                    setTimeout(() => {
+                        if(boss) createCircularBurst(boss.cx, boss.cy, 12, 2.0);
+                    }, 90);
+                }
+
+                // 攻撃パターン
+                const baseAttackInterval = boss.enraged ? 18 : (boss.phase >= 1 ? 60 : 35);
+                const attackInterval = Math.round(baseAttackInterval / diffSettings.attackCooldownMultiplier);
+                
+                // 第5形態の永続マシンガンウェーブ攻撃（4つのマシンガン、密度さらにアップ、回転速度3倍）
+                if(boss.phase === 4 && difficulty === 'hard') {
+                    boss.machineGunTimer++;
+                    if(boss.machineGunTimer % 4 === 0) { // 4フレーム（0.04秒）ごとに連射（さらに密度アップ）
+                        // 4つのマシンガン（上下2つ、上下反転2つ）
+                        const angles = [
+                            boss.machineGunAngle,        // 右上
+                            boss.machineGunAngle2,       // 左上
+                            -boss.machineGunAngle,       // 右下（上下反転）
+                            -boss.machineGunAngle2       // 左下（上下反転）
+                        ];
+                        
+                        angles.forEach(baseAngle => {
+                            const speed = 4.0;
+                            createEnemyBullet(boss.cx, boss.cy, 'machineGunWave', {
+                                vx: Math.cos(baseAngle) * speed,
+                                vy: Math.sin(baseAngle) * speed,
+                                speed: speed
+                            });
+                        });
+                        
+                        // 角度を更新（回転速度3倍）
+                        boss.machineGunAngle += 0.15;  // 0.05 → 0.15
+                        boss.machineGunAngle2 -= 0.15; // 0.05 → 0.15
+                    }
+                }
+                
+                // academicモードでも第5形態のマシンガン追加
+                if(boss.phase === 4 && difficulty === 'academic') {
+                    boss.machineGunTimer++;
+                    if(boss.machineGunTimer % 3 === 0) { // さらに高密度（3フレームごと）
+                        const angles = [
+                            boss.machineGunAngle,
+                            boss.machineGunAngle2,
+                            -boss.machineGunAngle,
+                            -boss.machineGunAngle2,
+                            boss.machineGunAngle + Math.PI/2,  // 追加の角度
+                            boss.machineGunAngle - Math.PI/2   // 追加の角度
+                        ];
+                        
+                        angles.forEach(baseAngle => {
+                            const speed = 4.5; // academicでは若干速い
+                            createEnemyBullet(boss.cx, boss.cy, 'machineGunWave', {
+                                vx: Math.cos(baseAngle) * speed,
+                                vy: Math.sin(baseAngle) * speed,
+                                speed: speed
+                            });
+                        });
+                        
+                        // academic専用：さらに高速回転
+                        boss.machineGunAngle += 0.2;
+                        boss.machineGunAngle2 -= 0.2;
+                    }
+                }
+                
+                if(boss.shootTimer > attackInterval){ 
+                    boss.shootTimer = 0;
+                    
+                    const phasePatterns = { 
+                        0:['curvingLarge','curving'], 
+                        1:['spiralV2','spiralCircle','bigBurst'], 
+                        2:['spiralV2','grazeBullets','bigBurst'], 
+                        3:['spiralV2','17lasers','bigBurst'],
+                        4:['spiralV2','17lasers','bigBurst'], // 第5形態はマシンガンが永続なので他の攻撃も併用
+                        5:['magicCircle'] // 第6形態は魔法陣パターンのみ
+                    }; 
+                    const pool = phasePatterns[Math.min(boss.phase, boss.maxPhase)] || ['curvingLarge','curving'];
+                    let choice = pool[Math.floor(Math.random()*pool.length)];
+                    if(choice === 'spiralV2' && boss.spiralCooldown > 0){ 
+                        const alt = pool.filter(p=>p!=='spiralV2'); 
+                        choice = alt.length ? alt[Math.floor(Math.random()*alt.length)] : 'curving'; 
+                    }
+
+                    const patterns = {
+                        curvingLarge: ()=>{ 
+                            const baseAngle = 0; // 初期角度を0に統一
+                            const count = Math.round((boss.enraged ? 26 : 18) * diffSettings.bulletMultiplier);
+                            for(let i = 0; i < count; i++) {
+                                const angle = baseAngle + (i / count) * Math.PI * 2;
+                                const turnRate = (i % 2 === 0) ? 0.0015 : -0.0015;
+                                createEnemyBullet(boss.cx, boss.cy,'curving',{ 
+                                    angle: angle, 
+                                    speed: 1.8 + (i % 3) * 0.2,
+                                    turnRate: turnRate 
+                                });
+                            }
+                            circularBurstBaseAngle += (15 * Math.PI / 180);
+                        },
+                        curving: ()=>{ 
+                            const baseAngle = 0; // 初期角度を0に統一
+                            const count = Math.round((boss.enraged ? 18 : 12) * diffSettings.bulletMultiplier);
+                            for(let i = 0; i < count; i++) {
+                                const angle = baseAngle + (i / count) * Math.PI * 2;
+                                const turnRate = (i % 2 === 0) ? 0.001 : -0.001;
+                                createEnemyBullet(boss.cx, boss.cy,'curving',{ 
+                                    angle: angle, 
+                                    speed: 1.6 + (i % 2) * 0.4,
+                                    turnRate: turnRate 
+                                });
+                            }
+                            circularBurstBaseAngle += (12 * Math.PI / 180);
+                        },
+                        spiralV2: ()=>{
+                            spiralDirection *= -1;
+                            
+                            // 難易度に応じたクールタイム短縮（第2形態以降）
+                            const burstCount = boss.phase >= 1 ? (boss.enraged ? 7 : 6) : 5;
+                            const burstInterval = boss.phase >= 1 ? 70 : 100;
+                            
+                            for(let burst = 0; burst < burstCount; burst++) {
+                                setTimeout(() => {
+                                    if(!boss) return;
+                                    const sets = boss.enraged ? 2 : 1;
+                                    for(let s=0;s<sets;s++){
+                                        const bullets = Math.round((boss.enraged ? 12 : 8) * diffSettings.bulletMultiplier);
+                                        for(let i=0;i<bullets;i++){
+                                            const angle = (i / bullets) * Math.PI * 2 + (s * 0.01) + burst * 0.1;
+                                            createEnemyBullet(boss.cx, boss.cy, 'spiralV2', { 
+                                                centerX: boss.cx, 
+                                                centerY: boss.cy, 
+                                                angle: angle, 
+                                                radius: 12 + i*0.5, 
+                                                angularSpeed: (0.005 + s*0.002) * spiralDirection,
+                                                radialSpeed: 1.2 + s*0.1,
+                                                offsetY: s*0.2 
+                                            });
+                                        }
+                                    }
+                                }, burst * burstInterval);
+                            }
+                            boss.spiralCooldown = boss.phase >= 1 ? 150 : 200; // クールタイム短縮
+                        },
+                        spiralCircle: ()=>{ 
+                            const count = Math.round((boss.enraged ? 20 : 14) * diffSettings.bulletMultiplier);
+                            const speed = (boss.enraged ? 2.6 : 2.2) * Math.sqrt(diffSettings.bulletMultiplier);
+                            createCircularBurst(boss.cx, boss.cy, count, speed, 0); // 初期角度0で統一
+                        },
+                        bigBurst: ()=>{
+                            const burstCount = Math.round(6 * diffSettings.bulletMultiplier);
+                            for(let i = 0; i < burstCount; i++) {
+                                const angle = (i / burstCount) * Math.PI * 2;
+                                createEnemyBullet(boss.cx, boss.cy, 'bigBurst', {
+                                    vx: Math.cos(angle) * 2.5,
+                                    vy: Math.sin(angle) * 2.5,
+                                    speed: 2.5,
+                                    life: 200,
+                                    phase: 'moving'
+                                });
+                            }
+                        },
+                        grazeBullets: ()=>{
+                            const grazeCount = Math.round((boss.enraged ? 12 : 8) * diffSettings.bulletMultiplier);
+                            for(let i = 0; i < grazeCount; i++) {
+                                setTimeout(() => {
+                                    if(boss) createEnemyBullet(boss.cx, boss.cy, 'grazeBullet');
+                                }, i * 80);
+                            }
+                        },
+                        '17lasers': ()=>{
+                            const laserCount = Math.round(18 * diffSettings.bulletMultiplier);
+                            const baseAngle = laserBaseAngle; // 前回の角度を使用
+                            
+                            for(let i=0;i<laserCount;i++){ 
+                                const angle = baseAngle + (i * 20 * Math.PI / 180); 
+                                createLaser(boss.cx, boss.cy, angle, { 
+                                    previewSpin: 0.06, 
+                                    previewDecel: 0.97, 
+                                    chargeTime: 120, 
+                                    activeTime: 30 
+                                }); 
+                            }
+                            laserBaseAngle += (10 * Math.PI / 180); // 次回用に角度更新
+                            
+                            // 追加弾幕も角度を統一
+                            createCurvingBullets(boss.cx, boss.cy, Math.round(12 * diffSettings.bulletMultiplier));
+                            for(let s=0;s<2;s++){
+                                const bullets = Math.round(8 * diffSettings.bulletMultiplier);
+                                for(let j=0;j<bullets;j++){
+                                    const ang = baseAngle + (j/bullets) * Math.PI * 2;
+                                    createEnemyBullet(boss.cx + Math.cos(ang)*20, boss.cy + Math.sin(ang)*20, 'spiralV2', { 
+                                        centerX: boss.cx, 
+                                        centerY: boss.cy, 
+                                        angle: ang, 
+                                        radius: 12 + j*1.6, 
+                                        angularSpeed: (0.005 + s*0.002) * spiralDirection,
+                                        radialSpeed: 0.25 + s*0.08,
+                                        offsetY: s*0.4 
+                                    });
+                                }
+                            }
+                        },
+                        magicCircle: ()=>{
+                            // 第6形態専用：魔法陣パターン（最高難易度）
+                            createMagicCirclePattern(boss.cx, boss.cy);
+                        }
+                    };
+                    if(patterns[choice]) patterns[choice]();
+                }
+
+                // 第6形態では常時魔法陣弾幕を発動
+                if(boss.phase === 5 && difficulty === 'academic') {
+                    if(gameTime % 30 === 0) { // 高頻度で魔法陣弾幕
+                        createMagicCirclePattern(boss.cx, boss.cy);
+                    }
+                }
+
+                // 形態変化システム（修正版：1形態1体力バー + 弾消去エフェクト）
+                if(boss.hp <= 0){
+                    if(boss.phase < boss.maxPhase){
+                        // 形態移行時のエフェクト
+                        createBossPhaseChangeEffect(boss.cx, boss.cy);
+                        
+                        // 形態移行時の弾消去と軽いフラッシュエフェクト
+                        enemyBullets = [];
+                        lasers = [];
+                        
+                        // 改良された軽いフラッシュエフェクト
+                        bombFlashTimer = 0;
+                        bombFlashAlpha = 0.15; // かなり弱め
+                        
+                        boss.phase++; 
+                        boss.size *= 0.95;
+                        // 各形態の体力を回復
+                        const phaseHp = difficulty === 'easy' ? 1400 : (difficulty === 'hard' ? 1800 : (difficulty === 'academic' ? 2200 : 1600));
+                        boss.hp = phaseHp;
+                        boss.maxHp = phaseHp;
+                        boss.machineGunTimer = 0; // マシンガンタイマーリセット
+                    } else {
+                        // 最終形態で体力が0になった場合のみ勝利
+                        createBossDeathEffect(boss.cx, boss.cy);
+                        gameOver(true);
+                    }
+                }
+            }
+
+            // 正解・不正解のフィードバック表示タイマー
+            if(answerFeedback.show) {
+                answerFeedback.timer--;
+                if(answerFeedback.timer <= 0) {
+                    answerFeedback.show = false;
+                }
+            }
+
+            // quiz walls movement with timeout check
+            const diffSettings = getDifficultySettings();
+            quizWalls.forEach((w,i)=>{
+                w.y += 1 * diffSettings.quizWallSpeed; 
+                if(w.y > canvas.height - w.height) {
+                    if(currentQuizWall) {
+                        answerFeedback = { show: true, text: '不正解！', timer: 120 };
+                        bossEnrageTime = 600;
+                        if(boss) boss.hp -= Math.floor(boss.maxHp * 0.07); // 現在形態の最大体力の7%ダメージ
+                        
+                        // タイムアウト時の解説表示
+                        showExplanation(currentQuizWall, false);
+                        
+                        quizWalls = [];
+                        currentQuizWall = null;
+                        showingAnnouncement = false;
+                        waitingForNextQuiz = true;
+                        nextQuizTimer = 0;
+                        bossInvulnerable = false;
+                    }
+                } else if(w.y > canvas.height) {
+                    quizWalls.splice(i,1);
+                }
+            });
+
+            // 各種更新処理
+            updateFlashEffect(); // フラッシュエフェクト更新を追加
+            updateParticles(); // パーティクル更新を追加
+            checkCollisions();
+
+            if(!boss && !debugMode && gameTime % Math.round(100 / diffSettings.enemySpawnRate) === 0) spawnEnemy();
+            // ボス戦の勝利判定は上記のboss logic内で処理
+        }
+
+        // collision helpers
+        function getRect(obj){ if(obj.size !== undefined) return { x: obj.cx - obj.size/2, y: obj.cy - obj.size/2, width: obj.size, height: obj.size }; return { x: obj.x, y: obj.y, width: obj.width, height: obj.height }; }
+        function rectsOverlap(a,b){ return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y; }
+
+        function playerHit(){ 
+            if(debugMode) return;
+            player.lives--; 
+            player.invulnerable = 120; 
+            // ボム数を2個未満なら2個まで補充
+            if(player.bombs < 2) player.bombs = 2;
+            if(player.lives <= 0) gameOver(false); 
+            else { player.x = canvas.width/2; player.y = canvas.height-100; } 
+        }
+
+        function checkCollisions(){
+            const diffSettings = getDifficultySettings();
+            
+            playerBullets.forEach((b,bi)=>{
+                const bulletRect = { x: b.x - (b.width||3)/2, y: b.y - (b.height||6)/2, width: b.width||3, height: b.height||6 };
+                
+                quizWalls.forEach((w,wi)=>{ 
+                    if(rectsOverlap(bulletRect, getRect(w))){ 
+                        w.hp -= 20; 
+                        playerBullets.splice(bi,1); 
+                        if(w.hp <= 0){ 
+                            if(w.isCorrect){ 
+                                answerFeedback = { show: true, text: '正解！', timer: 120 };
+                                bossInvulnerable = false; 
+                                score += 1000;
+                                if(boss) boss.hp -= Math.floor(boss.maxHp * 0.07 * diffSettings.quizDamageMultiplier); // 現在形態の最大体力の7%×ダメージ倍率
+                                
+                                // 正解時の解説表示
+                                if(currentQuizWall) {
+                                    showExplanation(currentQuizWall, true);
+                                }
+                                
+                                quizWalls = []; 
+                                currentQuizWall = null; 
+                                showingAnnouncement = false; 
+                                waitingForNextQuiz = true; 
+                                nextQuizTimer = 0; 
+                            } else { 
+                                answerFeedback = { show: true, text: '不正解！', timer: 120 };
+                                bossEnrageTime = 600; 
+                                
+                                // 不正解時の解説表示
+                                if(currentQuizWall) {
+                                    showExplanation(currentQuizWall, false);
+                                }
+                                
+                                quizWalls = []; 
+                                currentQuizWall = null; 
+                                showingAnnouncement = false; 
+                                waitingForNextQuiz = true; 
+                                nextQuizTimer = 0; 
+                            } 
+                        } 
+                    } 
+                });
+                
+                enemies.forEach((e,ei)=>{ 
+                    if(rectsOverlap(bulletRect, getRect(e))){ 
+                        e.hp -= Math.max(8, Math.round(parseFormula(e.compound) * 0.1)) * diffSettings.damageMultiplier; 
+                        playerBullets.splice(bi,1); 
+                        if(e.hp <= 0){ 
+                            // 雑魚敵撃破時のエフェクト
+                            createEnemyDeathEffect(e.x + e.width/2, e.y + e.height/2);
+                            score += e.scoreValue; 
+                            enemies.splice(ei,1); 
+                        } 
+                    } 
+                });
+                
+                if(boss && !bossInvulnerable){ 
+                    if(rectsOverlap(bulletRect, getRect(boss))){ 
+                        boss.hp -= 6 * diffSettings.damageMultiplier; 
+                        playerBullets.splice(bi,1); 
+                        score += 20; 
+                    } 
+                }
+            });
+
+            if(player.invulnerable === 0){
+                enemyBullets.forEach((b,bi)=>{ const br = { x: b.x - (b.width||4)/2, y: b.y - (b.height||4)/2, width: b.width||4, height: b.height||4 }; if(rectsOverlap(br, getRect(player))){ playerHit(); enemyBullets.splice(bi,1); } });
+                // レーザーの当たり判定修正：予測線（alpha < 1.0）は当たり判定なし
+                lasers.forEach(l=>{ if(l.alpha >= 1.0){ if(laserCollision(l, player)) playerHit(); } });
+                enemies.forEach((e,ei)=>{ if(rectsOverlap(getRect(e), getRect(player))){ playerHit(); enemies.splice(ei,1); } });
+            }
+        }
+
+        function laserCollision(laser, target){
+            const tx = target.x + target.width/2; const ty = target.y + target.height/2;
+            const dx = tx - laser.x; const dy = ty - laser.y;
+            const cosA = Math.cos(laser.angle); const sinA = Math.sin(laser.angle);
+            const along = dx * cosA + dy * sinA;
+            const perp = Math.abs(-dx * sinA + dy * cosA);
+            if(along < 0 || along > laser.length) return false;
+            return perp <= laser.width/2 + Math.max(target.width, target.height)/2;
+        }
+
+        function wrapTextToLines(context, text, maxWidth, maxLines=3){ const words = text.split(' '); const lines = []; let cur = ''; for(let i=0;i<words.length;i++){ const test = cur ? cur + ' ' + words[i] : words[i]; if(context.measureText(test).width > maxWidth && cur){ lines.push(cur); cur = words[i]; if(lines.length >= maxLines) break; } else cur = test; } if(lines.length < maxLines && cur) lines.push(cur); return lines; }
+
+        function drawBenzene(c,x,y,r){ 
+            const strokeColor = isInvertedMode ? '#000' : '#fff';
+            c.strokeStyle = strokeColor; 
+            c.lineWidth = 2; 
+            c.beginPath(); 
+            for(let i=0;i<6;i++){ 
+                const a = (Math.PI * 2 / 6) * i - Math.PI/6; 
+                const nx = x + Math.cos(a) * r; 
+                const ny = y + Math.sin(a) * r; 
+                if(i===0) c.moveTo(nx,ny); 
+                else c.lineTo(nx,ny); 
+            } 
+            c.closePath(); 
+            c.stroke(); 
+            c.beginPath(); 
+            c.arc(x,y,r*0.35,0,Math.PI*2); 
+            c.stroke(); 
+        }
+
+        // ベンゼン背景パーティクル（ゲーム中も表示）
+        const gameplayBenzeneParticles = [];
+        
+        function spawnGameplayBenzeneParticle() {
+            const size = 20 + Math.random() * 40;
+            gameplayBenzeneParticles.push({
+                x: Math.random() * canvas.width,
+                y: canvas.height + size,
+                size: size,
+                speed: 0.3 + Math.random() * 0.7,
+                angle: Math.random() * Math.PI * 2,
+                life: 300 + Math.random() * 200,
+                alpha: 0,
+                maxAlpha: 0.08 + Math.random() * 0.05 // とても薄い
+            });
+        }
+
+        function draw(){
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            
+            // 新しい背景：薄いベンゼンパーティクル
+            if(gameState === 'playing') {
+                // パーティクル生成
+                if(gameplayBenzeneParticles.length < 8 && Math.random() < 0.03) {
+                    spawnGameplayBenzeneParticle();
+                }
+                
+                // パーティクル更新と描画
+                gameplayBenzeneParticles.forEach((p, i) => {
+                    p.y -= p.speed;
+                    p.angle += 0.008;
+                    p.life--;
+                    
+                    // フェードイン・アウト
+                    if(p.life > 100) {
+                        p.alpha = Math.min(p.maxAlpha, p.alpha + 0.002);
+                    } else {
+                        p.alpha = Math.max(0, p.alpha - 0.002);
+                    }
+                    
+                    if(p.life <= 0 || p.y < -p.size) {
+                        gameplayBenzeneParticles.splice(i, 1);
+                    } else {
+                        // ベンゼン描画
+                        ctx.save();
+                        ctx.globalAlpha = p.alpha;
+                        ctx.translate(p.x, p.y);
+                        ctx.rotate(p.angle);
+                        const strokeColor = isInvertedMode ? '#000' : '#fff';
+                        ctx.strokeStyle = strokeColor;
+                        ctx.lineWidth = 1;
+                        
+                        // ベンゼン環
+                        ctx.beginPath();
+                        for(let j = 0; j < 6; j++) {
+                            const a = (Math.PI * 2 / 6) * j - Math.PI/6;
+                            const nx = Math.cos(a) * p.size * 0.4;
+                            const ny = Math.sin(a) * p.size * 0.4;
+                            if(j === 0) ctx.moveTo(nx, ny);
+                            else ctx.lineTo(nx, ny);
+                        }
+                        ctx.closePath();
+                        ctx.stroke();
+                        
+                        // 内側の円
+                        ctx.beginPath();
+                        ctx.arc(0, 0, p.size * 0.15, 0, Math.PI * 2);
+                        ctx.stroke();
+                        
+                        ctx.restore();
+                    }
+                });
+            }
+
+            const playerColor = isInvertedMode ? '#000' : '#fff';
+            if(player.invulnerable===0 || player.invulnerable%10<5){ 
+                ctx.fillStyle = playerColor; 
+                ctx.fillRect(player.x, player.y, player.width, player.height); 
+                ctx.fillRect(player.x+player.width/2-1, player.y+player.height/2-1, 2,2); 
+            }
+
+            const bulletColor = isInvertedMode ? '#000' : '#fff';
+            ctx.fillStyle = bulletColor; 
+            playerBullets.forEach(b=> ctx.fillRect(b.x - (b.width||3)/2, b.y - (b.height||6)/2, b.width||3, b.height||6));
+
+            enemyBullets.forEach(b=>{ 
+                const enemyBulletColor = isInvertedMode ? '#000' : '#fff';
+                switch(b.type) {
+                    case 'straight':
+                        ctx.fillStyle = enemyBulletColor; 
+                        ctx.fillRect(b.x - 2, b.y - 2, 4, 4);
+                        break;
+                    case 'homing':
+                        ctx.fillStyle = enemyBulletColor; 
+                        ctx.beginPath();
+                        ctx.arc(b.x, b.y, 3, 0, Math.PI*2);
+                        ctx.fill();
+                        break;
+                    case 'curving':
+                        ctx.fillStyle = enemyBulletColor; 
+                        ctx.beginPath();
+                        ctx.moveTo(b.x - 3, b.y);
+                        ctx.lineTo(b.x + 3, b.y - 2);
+                        ctx.lineTo(b.x + 3, b.y + 2);
+                        ctx.closePath();
+                        ctx.fill();
+                        break;
+                    case 'spiralV2':
+                        ctx.fillStyle = enemyBulletColor; 
+                        ctx.beginPath();
+                        ctx.arc(b.x, b.y, 2, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.strokeStyle = enemyBulletColor;
+                        ctx.beginPath();
+                        ctx.moveTo(b.x - 3, b.y); ctx.lineTo(b.x + 3, b.y);
+                        ctx.moveTo(b.x, b.y - 3); ctx.lineTo(b.x, b.y + 3);
+                        ctx.stroke();
+                        break;
+                    case 'bigBurst':
+                        ctx.fillStyle = enemyBulletColor; 
+                        ctx.strokeStyle = enemyBulletColor;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(b.x, b.y, 6, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.stroke();
+                        const innerColor = isInvertedMode ? '#fff' : '#000';
+                        ctx.fillStyle = innerColor;
+                        ctx.beginPath();
+                        ctx.arc(b.x, b.y, 2, 0, Math.PI*2);
+                        ctx.fill();
+                        break;
+                    case 'smallBurst':
+                        ctx.fillStyle = enemyBulletColor; 
+                        ctx.beginPath();
+                        ctx.arc(b.x, b.y, 3, 0, Math.PI*2);
+                        ctx.fill();
+                        const smallInnerColor = isInvertedMode ? '#fff' : '#000';
+                        ctx.strokeStyle = smallInnerColor;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(b.x - 2, b.y - 2); ctx.lineTo(b.x + 2, b.y + 2);
+                        ctx.moveTo(b.x + 2, b.y - 2); ctx.lineTo(b.x - 2, b.y + 2);
+                        ctx.stroke();
+                        break;
+                    case 'grazeBullet':
+                        ctx.fillStyle = enemyBulletColor; 
+                        ctx.beginPath();
+                        ctx.moveTo(b.x, b.y - 3);
+                        ctx.lineTo(b.x + 2, b.y);
+                        ctx.lineTo(b.x, b.y + 3);
+                        ctx.lineTo(b.x - 2, b.y);
+                        ctx.closePath();
+                        ctx.fill();
+                        break;
+                    case 'machineGunWave':
+                        ctx.fillStyle = enemyBulletColor; 
+                        ctx.beginPath();
+                        const starPoints = 5;
+                        const outerRadius = 4;
+                        const innerRadius = 2;
+                        for(let i = 0; i < starPoints * 2; i++) {
+                            const angle = (i * Math.PI) / starPoints;
+                            const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                            const x = b.x + radius * Math.cos(angle);
+                            const y = b.y + radius * Math.sin(angle);
+                            if(i === 0) ctx.moveTo(x, y);
+                            else ctx.lineTo(x, y);
+                        }
+                        ctx.closePath();
+                        ctx.fill();
+                        break;
+                    case 'magicCircle':
+                        ctx.fillStyle = enemyBulletColor; 
+                        ctx.strokeStyle = enemyBulletColor;
+                        ctx.lineWidth = 1;
+                        // 魔法陣風の六角形弾
+                        ctx.beginPath();
+                        for(let i = 0; i < 6; i++) {
+                            const angle = (i / 6) * Math.PI * 2;
+                            const radius = 3;
+                            const x = b.x + radius * Math.cos(angle);
+                            const y = b.y + radius * Math.sin(angle);
+                            if(i === 0) ctx.moveTo(x, y);
+                            else ctx.lineTo(x, y);
+                        }
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                        break;
+                    case 'spiralCircle':
+                        ctx.fillStyle = enemyBulletColor; 
+                        ctx.beginPath();
+                        ctx.arc(b.x, b.y, 2, 0, Math.PI*2);
+                        ctx.fill();
+                        // 螺旋を表現する十字線
+                        ctx.strokeStyle = enemyBulletColor;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(b.x - 2, b.y); ctx.lineTo(b.x + 2, b.y);
+                        ctx.moveTo(b.x, b.y - 2); ctx.lineTo(b.x, b.y + 2);
+                        ctx.stroke();
+                        break;
+                    case 'petalBullet':
+                        ctx.fillStyle = enemyBulletColor; 
+                        // 花弁状の弾（楕円形）
+                        ctx.save();
+                        ctx.translate(b.x, b.y);
+                        ctx.rotate(b.angle || 0);
+                        ctx.beginPath();
+                        ctx.ellipse(0, 0, 4, 2, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                        break;
+                    default:
+                        ctx.fillStyle = enemyBulletColor; 
+                        const size = 4;
+                        ctx.fillRect(b.x - size/2, b.y - size/2, size, size);
+                        break;
+                }
+            });
+
+            const laserColor = isInvertedMode ? '#000' : '#fff';
+            lasers.forEach(l=>{ 
+                const alpha = Math.max(0, Math.min(1, l.alpha));
+                if(alpha > 0) {
+                    // レーザー予測線の色修正：Academic(色反転)モードでは水色、通常モードでは赤色
+                    if(l.timer <= l.chargeTime + l.fadeTime) { 
+                        if(isInvertedMode) {
+                            ctx.strokeStyle = 'rgba(0, 150, 200, 1.0)'; // 水色（Academic専用）
+                        } else {
+                            ctx.strokeStyle = 'rgba(150, 0, 0, 1.0)'; // 赤色（通常）
+                        }
+                        ctx.lineWidth = 1.5; 
+                    } else { 
+                        ctx.strokeStyle = isInvertedMode ? `rgba(0, 0, 0, ${alpha})` : `rgba(255, 255, 255, ${alpha})`; 
+                        ctx.lineWidth = l.width; 
+                    } 
+                    ctx.beginPath(); 
+                    ctx.moveTo(l.x,l.y); 
+                    const ex = l.x + Math.cos(l.angle) * l.length; 
+                    const ey = l.y + Math.sin(l.angle) * l.length; 
+                    ctx.lineTo(ex,ey); 
+                    ctx.stroke();
+                }
+            });
+
+            const textColor = isInvertedMode ? '#000' : '#fff';
+            enemies.forEach(e=>{
+                ctx.fillStyle = textColor; 
+                ctx.textAlign = 'center';
+                let nameFs = 11; 
+                ctx.font = `${nameFs}px Courier New`;
+                while(nameFs > 8 && ctx.measureText(e.name).width > e.width + 20){ 
+                    nameFs--; 
+                    ctx.font = `${nameFs}px Courier New`; 
+                }
+                ctx.fillText(e.name, e.x + e.width/2, e.y - 8);
+                
+                ctx.fillStyle = textColor; 
+                ctx.beginPath(); 
+                ctx.arc(e.x+e.width/2, e.y+e.height/2, e.width/2, 0, Math.PI*2); 
+                ctx.fill(); 
+                const enemyStrokeColor = isInvertedMode ? '#fff' : '#000';
+                ctx.strokeStyle = enemyStrokeColor; 
+                ctx.lineWidth = 2; 
+                ctx.stroke();
+                
+                const enemyTextColor = isInvertedMode ? '#fff' : '#000';
+                ctx.fillStyle = enemyTextColor; 
+                ctx.textAlign = 'center'; 
+                let fs = 16; 
+                ctx.font = `bold ${fs}px Courier New`; 
+                const padding = 8; 
+                const maxW = e.width - padding; 
+                while(fs > 10 && ctx.measureText(e.compound).width > maxW){ 
+                    fs--; 
+                    ctx.font = `bold ${fs}px Courier New`; 
+                }
+                
+                if(ctx.measureText(e.compound).width > maxW && e.compound.length > 4){ 
+                    const half = Math.ceil(e.compound.length/2); 
+                    const line1 = e.compound.slice(0,half); 
+                    const line2 = e.compound.slice(half); 
+                    ctx.fillText(line1, e.x + e.width/2, e.y + e.height/2 - 6); 
+                    ctx.fillText(line2, e.x + e.width/2, e.y + e.height/2 + fs + 2); 
+                } else {
+                    ctx.fillText(e.compound, e.x + e.width/2, e.y + e.height/2 + fs/4);
+                }
+                
+                ctx.fillStyle = textColor; 
+                ctx.font = '16px Courier New'; 
+                ctx.textAlign = 'left';
+            });
+
+            // draw quiz choices with improved text wrapping (正解も同じ色に)
+            quizWalls.forEach(w=>{
+                const quizWallBgColor = isInvertedMode ? '#fff' : '#333';
+                ctx.fillStyle = quizWallBgColor; // 色反転対応
+                ctx.fillRect(w.x,w.y,w.width,w.height); 
+                const quizBorderColor = isInvertedMode ? '#000' : '#fff';
+                ctx.strokeStyle = quizBorderColor; 
+                ctx.lineWidth = 2; 
+                ctx.strokeRect(w.x,w.y,w.width,w.height);
+                
+                const quizTextColor = isInvertedMode ? '#000' : '#fff';
+                ctx.fillStyle = quizTextColor; 
+                ctx.textAlign = 'center'; 
+                let fs = 16; 
+                ctx.font = `${fs}px Courier New`; 
+                
+                let displayText = w.text;
+                
+                const needsLineBreak = displayText.includes('と') || displayText.includes('も') || 
+                                      displayText.includes('及び') || displayText.includes('および') ||
+                                      displayText.includes('または') || displayText.includes('又は') ||
+                                      displayText.length > 12;
+                
+                if(needsLineBreak) {
+                    if(displayText.includes('と')) {
+                        displayText = displayText.replace('と', 'と\n');
+                    } else if(displayText.includes('も')) {
+                        displayText = displayText.replace('も', 'も\n');
+                    } else if(displayText.includes('および')) {
+                        displayText = displayText.replace('および', 'および\n');
+                    } else if(displayText.includes('または')) {
+                        displayText = displayText.replace('または', 'または\n');
+                    } else if(displayText.length > 12) {
+                        const mid = Math.floor(displayText.length / 2);
+                        displayText = displayText.slice(0, mid) + '\n' + displayText.slice(mid);
+                    }
+                }
+                
+                const lines = displayText.split('\n');
+                const maxWidth = w.width - 8;
+                while(fs > 8 && lines.some(line => ctx.measureText(line).width > maxWidth)){ 
+                    fs--; 
+                    ctx.font = `${fs}px Courier New`; 
+                }
+                
+                const lineHeight = fs + 4;
+                const totalHeight = lines.length * lineHeight;
+                const startY = w.y + w.height/2 - totalHeight/2 + lineHeight/2;
+                
+                lines.forEach((line, idx) => {
+                    ctx.fillText(line.trim(), w.x + w.width/2, startY + idx * lineHeight);
+                });
+                
+                ctx.textAlign = 'left'; 
+                
+                const hpBar = (w.hp / 100) * w.width; 
+                ctx.fillStyle = '#666'; 
+                ctx.fillRect(w.x, w.y - 8, w.width, 4); 
+                const hpBarColor = isInvertedMode ? '#000' : '#fff';
+                ctx.fillStyle = hpBarColor; 
+                ctx.fillRect(w.x, w.y - 8, hpBar, 4);
+            });
+
+            const announcementBgColor = isInvertedMode ? 'rgba(255,255,255,0.96)' : 'rgba(0,0,0,0.96)';
+            const announcementBorderColor = isInvertedMode ? '#000' : '#fff';
+            const announcementTextColor = isInvertedMode ? '#000' : '#fff';
+            
+            if(showingAnnouncement){ 
+                ctx.fillStyle = announcementBgColor; 
+                ctx.fillRect(50,300,canvas.width-100,80); 
+                ctx.strokeStyle = announcementBorderColor; 
+                ctx.lineWidth = 3; 
+                ctx.strokeRect(50,300,canvas.width-100,80); 
+                ctx.fillStyle = announcementTextColor; 
+                ctx.font = '20px Courier New'; 
+                ctx.textAlign = 'center'; 
+                ctx.fillText(currentQuizWall? currentQuizWall.question : '問題', canvas.width/2, 330); 
+                ctx.font = '16px Courier New'; 
+                ctx.fillText('正解の選択肢を撃って破壊せよ！', canvas.width/2, 355); 
+                ctx.textAlign = 'left'; 
+            }
+            else if(currentQuizWall){ 
+                ctx.fillStyle = announcementBgColor; 
+                ctx.fillRect(60,260,canvas.width-120,46); 
+                ctx.strokeStyle = announcementBorderColor; 
+                ctx.lineWidth = 2; 
+                ctx.strokeRect(60,260,canvas.width-120,46); 
+                ctx.fillStyle = announcementTextColor; 
+                ctx.font = '16px Courier New'; 
+                ctx.textAlign = 'center'; 
+                ctx.fillText(currentQuizWall.question, canvas.width/2, 289); 
+                ctx.textAlign = 'left'; 
+            }
+
+            if(boss){
+                ctx.fillStyle = textColor; 
+                ctx.beginPath(); 
+                ctx.arc(boss.cx, boss.cy, boss.size/2, 0, Math.PI*2); 
+                ctx.fill(); 
+                const bossStrokeColor = isInvertedMode ? '#fff' : '#000';
+                ctx.strokeStyle = bossStrokeColor; 
+                ctx.lineWidth = 3; 
+                ctx.stroke();
+                
+                ctx.save();
+                ctx.translate(boss.cx, boss.cy);
+                const benzeneSize = boss.size * 0.3;
+                drawBenzene(ctx, 0, 0, benzeneSize);
+                ctx.restore();
+                
+                const bossTextColor = isInvertedMode ? '#fff' : '#000';
+                ctx.fillStyle = bossTextColor; 
+                ctx.textAlign = 'center'; 
+                ctx.font = 'bold 16px Courier New';
+                ctx.fillText('古賀先生', boss.cx, boss.cy - 10);
+                ctx.fillText('Koga-sensei', boss.cx, boss.cy + 10);
+                ctx.textAlign = 'left';
+            }
+
+            if(boss){
+                const uiW = 200; const uiH = bossEnrageTime > 0 ? 80 : 60; const ux = canvas.width/2 - uiW/2; const uy = 10;
+                const bossUiBgColor = isInvertedMode ? '#fff' : '#000';
+                const bossUiBorderColor = isInvertedMode ? '#000' : '#fff';
+                const bossUiTextColor = isInvertedMode ? '#000' : '#fff';
+                
+                ctx.fillStyle = bossUiBgColor; 
+                ctx.fillRect(ux, uy, uiW, uiH);
+                ctx.strokeStyle = bossUiBorderColor; 
+                ctx.lineWidth = 2; 
+                ctx.strokeRect(ux, uy, uiW, uiH);
+                ctx.fillStyle = bossUiTextColor; 
+                ctx.font = '14px Courier New'; 
+                ctx.textAlign = 'left'; 
+                ctx.fillText(`Boss: 古賀先生`, ux + 10, uy + 16);
+                
+                // 形態表示（修正版）
+                const remainingPhases = boss.maxPhase - boss.phase;
+                const phaseText = boss.phase === 5 ? `最終第${boss.phase + 1}形態` : `第${boss.phase + 1}形態 (残り${remainingPhases})`;
+                ctx.fillText(phaseText, ux + 10, uy + 32);
+                
+                if(bossEnrageTime > 0) {
+                    ctx.fillStyle = '#f00'; ctx.font = 'bold 12px Courier New';
+                    ctx.fillText('不正解！怒りモード中！', ux + 10, uy + 72);
+                    ctx.fillStyle = bossUiTextColor;
+                }
+                
+                // 現在形態の体力バー（修正版：1形態1バー）
+                const hpBarWidth = 160; const hpBarHeight = 12;
+                const hpBarX = ux + 20; const hpBarY = uy + (bossEnrageTime > 0 ? 54 : 42);
+                
+                // 現在の形態の体力割合
+                const fillRatio = boss.hp / boss.maxHp;
+                const fillWidth = hpBarWidth * Math.max(0, Math.min(1, fillRatio));
+                
+                ctx.strokeStyle = bossUiBorderColor; 
+                ctx.strokeRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
+                
+                if(bossEnrageTime > 0) {
+                    ctx.fillStyle = '#f00';
+                } else {
+                    ctx.fillStyle = bossUiTextColor;
+                }
+                ctx.fillRect(hpBarX, hpBarY, fillWidth, hpBarHeight);
+                
+                ctx.textAlign = 'left';
+            }
+
+            if(answerFeedback.show) {
+                const alpha = Math.min(1, answerFeedback.timer / 60);
+                const feedbackColor = isInvertedMode ? `rgba(0, 0, 0, ${alpha})` : `rgba(255, 255, 255, ${alpha})`;
+                ctx.fillStyle = feedbackColor;
+                ctx.font = 'bold 24px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText(answerFeedback.text, canvas.width/2, 100);
+                ctx.textAlign = 'left';
+            }
+
+            // UI with bomb cooldown display
+            document.getElementById('playerLives').textContent = debugMode ? '∞' : Math.max(0, player.lives);
+            document.getElementById('bombCount').textContent = Math.max(0, player.bombs);
+            
+            const now = Date.now();
+            const cooldownRemaining = Math.max(0, 5000 - (now - lastBombTime));
+            const bombCooldownElement = document.getElementById('bombCooldown');
+            if(cooldownRemaining > 0) {
+                bombCooldownElement.textContent = `(${Math.ceil(cooldownRemaining/1000)}s)`;
+            } else {
+                bombCooldownElement.textContent = '';
+            }
+            
+            document.getElementById('score').textContent = score;
+            document.getElementById('bossHp').textContent = boss? Math.max(0, boss.hp) : 0;
+            
+            const difficultyNames = { easy: '[EASY]', normal: '[NORMAL]', hard: '[HARD]', academic: '[ACADEMIC]' };
+            document.getElementById('difficultyDisplay').textContent = difficultyNames[difficulty] || '';
+            
+            if(gameState === 'start'){
+                startAnimCtx.clearRect(0,0,startAnimCanvas.width,startAnimCanvas.height);
+                benzeneParticles.forEach(p=>{ 
+                    startAnimCtx.save(); 
+                    startAnimCtx.globalAlpha = 0.6 * p.alpha; 
+                    startAnimCtx.translate(p.x, p.y); 
+                    startAnimCtx.rotate(p.angle); 
+                    drawBenzene(startAnimCtx, 0, 0, p.size * 0.6); 
+                    startAnimCtx.restore(); 
+                });
+                const ttl = document.getElementById('titleText'); 
+                const t = Date.now() * 0.002; 
+                ttl.style.opacity = `${0.6 + 0.4 * Math.abs(Math.sin(t))}`; 
+                ttl.style.transform = `translateX(${Math.sin(t) * 6}px)`;
+            }
+
+            const warningTextColor = isInvertedMode ? '#000' : '#fff';
+            if(bossWarningActive){ 
+                const t = bossWarningTimer; 
+                const alpha = Math.min(1, t/120); 
+                ctx.fillStyle = `rgba(${isInvertedMode ? '0,0,0' : '255,255,255'},${Math.max(0,(alpha - 0.2))})`; 
+                ctx.font = '40px Courier New'; 
+                ctx.textAlign = 'center'; 
+                if(t > 10) ctx.fillText('！ボス出現！', canvas.width/2, canvas.height/2); 
+                ctx.textAlign = 'left'; 
+            }
+        }
+
+        function gameOver(victory){ 
+            gameState = 'gameOver'; 
+            const difficultyNames = { easy: 'イージー', normal: 'ノーマル', hard: 'ハード', academic: 'アカデミック' };
+            const diffName = difficultyNames[difficulty];
+            const txt = victory? `勝利！有機化学をマスターしました！
+難易度: ${diffName}
+スコア: ${score}` : `ゲームオーバー
+有機化学の勉強が必要ですね...
+難易度: ${diffName}
+スコア: ${score}`; 
+            document.getElementById('gameOverText').textContent = txt; 
+            document.getElementById('gameOver').style.display = 'block'; 
+
+            bgmStage.pause();
+            bgmBoss.pause();
+            bgmAcademicBoss.pause();
+            bgmStage.currentTime = 0;
+            bgmBoss.currentTime = 0;
+            bgmAcademicBoss.currentTime = 0;
+        }
+
+        function startGame(selectedDifficulty) {
+            difficulty = selectedDifficulty;
+            bgmBoss.pause();
+            bgmAcademicBoss.pause();
+            bgmBoss.currentTime = 0;
+            bgmAcademicBoss.currentTime = 0;
+            bgmStage.play();
+            
+            shuffleArray(chemQuizzes);
+            score = 0; gameTime = 0; 
+            player.lives = 3; 
+            player.bombs = 2; // 初期値は2個
+            player.x = canvas.width/2; 
+            player.y = canvas.height-100; 
+            player.invulnerable = 0; 
+            playerBullets = []; enemyBullets = []; lasers = []; enemies = []; quizWalls = []; 
+            particles = []; // パーティクル配列もリセット 
+            boss = null; bossPhase = 0; currentQuizWall = null; bossInvulnerable = false; 
+            bossEnrageTime = 0; quizAnnounceTimer = 0; showingAnnouncement = false; 
+            waitingForNextQuiz = false; nextQuizTimer = 0; bossWarningActive = false; 
+            bossWarningTimer = 0; spiralDirection = 1; 
+            answerFeedback = { show: false, text: '', timer: 0 };
+            lastBombTime = 0;
+            
+            // 解説パネルを非表示
+            document.getElementById('explanationPanel').style.display = 'none';
+            
+            // デバッグモードの場合は特別処理
+            if(debugMode) {
+                score = 3000;
+                player.lives = 999;
+                player.bombs = 99;
+                setTimeout(() => { 
+                    if(debugMode && !boss) { 
+                        bossWarningActive = true; 
+                        bossWarningTimer = 0; 
+                    } 
+                }, 500);
+            }
+            
+            gameState = 'playing'; 
+            startScreen.style.display = 'none'; 
+            fadeOverlay.style.background = 'transparent';
+        }
+
+        document.getElementById('easyBtn').addEventListener('click', ()=> startGame('easy'));
+        document.getElementById('normalBtn').addEventListener('click', ()=> startGame('normal'));
+        document.getElementById('hardBtn').addEventListener('click', ()=> startGame('hard'));
+        document.getElementById('academicBtn').addEventListener('click', ()=> startGame('academic'));
+        
+        // デバッグボタンはオンオフ切り替え式（修正版：11回クリックでacademicモード解禁）
+        document.getElementById('debugBtn').addEventListener('click', ()=>{
+            if(gameState === 'playing') return; // ゲーム中は切り替えできない
+            
+            debugClickCount++;
+            
+            // 11回クリックでacademicモード解禁 & 色反転
+            if(debugClickCount >= 11 && !isInvertedMode) {
+                toggleInvertedMode();
+                document.getElementById('normalDiffButtons').style.display = 'none';
+                document.getElementById('academicDiffButtons').style.display = 'block';
+                
+                const btn = document.getElementById('debugBtn');
+                btn.textContent = 'アカデミックモード解禁済み';
+                btn.classList.add('active');
+                return;
+            }
+            
+            // 通常のデバッグモード切り替え
+            debugMode = !debugMode;
+            const btn = document.getElementById('debugBtn');
+            if(debugMode) {
+                btn.textContent = '管理者モード: ON';
+                btn.classList.add('active');
+            } else {
+                btn.textContent = '管理者モード: OFF';
+                btn.classList.remove('active');
+            }
+        });
+
+        function showStartScreen(){ 
+            gameState = 'start'; 
+            debugMode = false;
+            document.getElementById('gameOver').style.display = 'none'; 
+            document.getElementById('explanationPanel').style.display = 'none'; // 解説パネルを非表示 
+            
+            // academicモードが解禁されている場合は維持
+            if(debugClickCount >= 11) {
+                document.getElementById('startScreen').style.display = 'flex'; 
+                document.getElementById('debugBtn').textContent = 'アカデミックモード解禁済み';
+                document.getElementById('debugBtn').classList.add('active');
+                document.getElementById('normalDiffButtons').style.display = 'none';
+                document.getElementById('academicDiffButtons').style.display = 'block';
+            } else {
+                // 通常状態にリセット
+                isInvertedMode = false;
+                debugClickCount = 0;
+                const body = document.body;
+                const gameContainer = document.getElementById('gameContainer');
+                const canvas = document.getElementById('gameCanvas');
+                const startScreen = document.getElementById('startScreen');
+                
+                body.classList.remove('inverted');
+                gameContainer.classList.remove('inverted');
+                canvas.classList.remove('inverted');
+                startScreen.classList.remove('inverted');
+                
+                document.getElementById('debugBtn').textContent = '管理者モード: OFF';
+                document.getElementById('debugBtn').classList.remove('active');
+                document.getElementById('normalDiffButtons').style.display = 'block';
+                document.getElementById('academicDiffButtons').style.display = 'none';
+                document.getElementById('startScreen').style.display = 'flex'; 
+            }
+            
+            window.scrollTo(0,0); 
+        }
+
+        function gameLoop(currentTime){ 
+            if (currentTime - lastTime >= frameTime) {
+                update(); 
+                draw(); 
+                lastTime = currentTime;
+            }
+            requestAnimationFrame(gameLoop); 
+        }
+        
+        for(let i=0;i<8;i++) spawnBenzeneParticle(); 
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
